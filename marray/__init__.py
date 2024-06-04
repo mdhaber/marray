@@ -2,7 +2,7 @@
 Masked versions of array API compatible arrays
 """
 
-__version__ = "0.0.2"
+__version__ = "0.0.3"
 
 import numpy as np  # temporarily used in __repr__ and __str__
 
