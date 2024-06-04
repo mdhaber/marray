@@ -9,6 +9,11 @@ readme = "README.md"
 license = {file = "LICENSE"}
 classifiers = ["License :: OSI Approved :: MIT License"]
 dynamic = ["version", "description"]
+dependencies = ["numpy"]
+requires-python = ">=3.8"
+
+[project.optional-dependencies]
+test = ["pytest"]
 
 [project.urls]
 Home = "https://github.com/mdhaber/marray"
