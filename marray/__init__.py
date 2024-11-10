@@ -2,7 +2,7 @@
 Masked versions of array API compatible arrays
 """
 
-__version__ = "0.0.3"
+__version__ = "0.0.4"
 
 import numpy as np  # temporarily used in __repr__ and __str__
 
@@ -23,54 +23,73 @@ def masked_array(xp):
            fill_value=1e+20)
 
     """
-    class MaskedArray(xp.ndarray):
-        # I don't know best practices for subclassing arrays, and right now
-        # I think this will only work with NumPy and CuPy. That's OK.
-        # This is just a draft; we can improve it later.
-        def __new__(cls, data, mask=None):
-            return xp.asarray(data).view(MaskedArray)
+    class MaskedArray():
 
         def __init__(self, data, mask=None):
-            mask = (xp.zeros(self.shape, dtype=bool) if mask is None
+            data = getattr(data, '_data', data)
+            mask = (xp.zeros(data.shape, dtype=bool) if mask is None
                     else xp.asarray(mask, dtype=bool))
-            mask = xp.asarray(xp.broadcast_to(mask, self.shape), copy=True)
+            mask = xp.asarray(xp.broadcast_to(mask, data.shape), copy=True)
+            self._data = data
+            self._dtype = data.dtype
+            self._ndim = data.ndim
+            self._shape = data.shape
+            self._size = data.size
+
             self._mask = mask
             self._xp = xp
             self._sentinel = (info(self).max if not xp.isdtype(self.dtype, 'bool')
                               else None)
-            super().__init__()
+
+        @property
+        def data(self):
+            return self._data
+
+        @property
+        def dtype(self):
+            return self._dtype
+
+        @property
+        def ndim(self):
+            return self._ndim
+
+        @property
+        def shape(self):
+            return self._shape
+
+        @property
+        def size(self):
+            return self._size
 
         @property
         def mask(self):
             return self._mask
 
         def call_super_method(self, method_name, *args, **kwargs):
-            method = getattr(super(), method_name)
+            method = getattr(self.data, method_name)
+            args = [getattr(arg, 'data', arg) for arg in args]
             return method(*args, **kwargs)
-
-        def get_super_attr(self, attr_name):
-            return getattr(super(), attr_name)
 
         ## Indexing ##
         def __getitem__(self, key):
-            return MaskedArray(super().__getitem__(key), self.mask[key])
+            return MaskedArray(self.data[key], self.mask[key])
 
         def __setitem__(self, key, other):
-            self.mask[key] = other.mask if hasattr(other, 'mask') else False
-            return super().__setitem__(key, other)
+            self.mask[key] = getattr(other, 'mask', False)
+            return self.data.__setitem__(key, getattr(other, 'data', other))
 
         ## Visualization ##
         def __repr__(self):
-            # temparory: fix for CuPy
+            # temporary: fix for CuPy
             # eventually: rewrite to avoid masked array
-            data = np.asarray(self)
+            data = np.asarray(self.data)
             mask = np.asarray(self.mask)
             return np.ma.masked_array(data, mask).__repr__()
 
         def __str__(self):
-            # temparory: fix for CuPy
+            # temporary: fix for CuPy
             # eventually: rewrite to avoid masked array
-            data = np.asarray(self)
+            data = np.asarray(self.data)
             mask = np.asarray(self.mask)
             return np.ma.masked_array(data, mask).__str__()
 
@@ -85,24 +104,28 @@ def masked_array(xp):
 
         @property
         def T(self):
-            return MaskedArray(super().T, self.mask.T)
+            return MaskedArray(self.data.T, self.mask.T)
 
         @property
         def mT(self):
-            return MaskedArray(super().mT, self.mask.mT)
-
-        # Inherited
-        # dtype, device, ndim, shape, size
+            return MaskedArray(self.data.mT, self.mask.mT)
 
     ## Methods ##
 
-    # Methods that return the result of a unary operation
+    # Methods that return the result of a unary operation as an array
     unary_names = (['__abs__', '__floordiv__', '__invert__', '__neg__', '__pos__']
                    + ['__ceil__'])
     for name in unary_names:
         def fun(self, name=name):
             data = self.call_super_method(name)
             return MaskedArray(data, self.mask)
+        setattr(MaskedArray, name, fun)
+
+    # Methods that return the result of a unary operation as a Python scalar
+    unary_names_py = ['__bool__', '__complex__', '__float__', '__index__', '__int__']
+    for name in unary_names_py:
+        def fun(self, name=name):
+            return self.call_super_method(name)
         setattr(MaskedArray, name, fun)
 
     # Methods that return the result of an elementwise binary operation
@@ -130,13 +153,14 @@ def masked_array(xp):
         def fun(self, other, name=name, **kwargs):
             if hasattr(other, 'mask'):
                 self.mask |= other.mask
-            return self.call_super_method(name, other)
+            self.call_super_method(name, other)
+            return self
         setattr(MaskedArray, name, fun)
 
     # Inherited
-    # __array_namespace__, __bool__, __complex__, __float__, __index__, __int__
 
     # To be added
+    # __array_namespace__
     # __dlpack__, __dlpack_device__
     # to_device?
 
@@ -162,14 +186,13 @@ def masked_array(xp):
         if device is not None:
             raise NotImplementedError()
 
-        if isinstance(obj, MaskedArray):
-            if copy:
-                mask = xp.asarray(obj.mask, copy=True)
-            else:
-                return obj
+        data = getattr(obj, 'data', obj)
+        mask = (getattr(obj, 'mask', xp.full(data.shape, False))
+                if mask is None else mask)
 
-        obj = xp.asarray(obj, dtype=dtype, device=device, copy=copy)
-        return MaskedArray(obj, mask=mask)
+        data = xp.asarray(data, dtype=dtype, device=device, copy=copy)
+        mask = xp.asarray(mask, dtype=dtype, device=device, copy=copy)
+        return MaskedArray(data, mask=mask)
     mod.asarray = asarray
 
     creation_functions = ['arange', 'empty', 'empty_like', 'eye', 'from_dlpack',
@@ -188,7 +211,7 @@ def masked_array(xp):
     for name in dtype_fun_names + dtype_names:
         setattr(mod, name, getattr(xp, name))
 
-    mod.astype = (lambda x, dtype, /, *, copy, **kwargs:
+    mod.astype = (lambda x, dtype, /, *, copy=True, **kwargs:
                   asarray(x, copy=copy or (dtype != x.dtype), dtype=dtype, **kwargs))
 
     ## Elementwise Functions ##
@@ -208,8 +231,9 @@ def masked_array(xp):
     for name in elementwise_names:
         def fun(*args, name=name, **kwargs):
             masks = [arg.mask for arg in args if hasattr(arg, 'mask')]
-            data = getattr(xp, name)(*args, **kwargs)
-            return MaskedArray(data, mask=xp.any(masks, axis=0))
+            args = [getattr(arg, 'data', arg) for arg in args]
+            out = getattr(xp, name)(*args, **kwargs)
+            return MaskedArray(out, mask=xp.any(masks, axis=0))
         setattr(mod, name, fun)
 
     ## Indexing Functions
@@ -253,13 +277,13 @@ def masked_array(xp):
         def linalg_fun(x1, x2, /, **kwargs):
             x1 = asarray(x1)
             x2 = asarray(x2)
-            data1 = xp.asarray(x1, copy=True)
-            data2 = xp.asarray(x2, copy=True)
+            data1 = xp.asarray(x1.data, copy=True)
+            data2 = xp.asarray(x2.data, copy=True)
             data1[x1.mask] = 0
             data2[x2.mask] = 0
             fun = getattr(xp, name)
             data = fun(data1, data2)
-            mask = ~fun(~x1._mask, ~x2._mask)
+            mask = ~fun(~x1.mask, ~x2.mask)
             return MaskedArray(data, mask)
         return linalg_fun
 
@@ -277,14 +301,16 @@ def masked_array(xp):
                  else [asarray(xi) for xi in x])
             mask = (x.mask if name not in first_arg_arrays
                     else [xi.mask for xi in x])
+            data = (x.data if name not in first_arg_arrays
+                    else [xi.data for xi in x])
 
             fun = getattr(xp, name)
 
             if name == 'broadcast_arrays':
-                res = fun(*x, *args, **kwargs)
+                res = fun(*data, *args, **kwargs)
                 mask = fun(*mask, *args, **kwargs)
             else:
-                res = fun(x, *args, **kwargs)
+                res = fun(data, *args, **kwargs)
                 mask = fun(mask, *args, **kwargs)
 
             out = (MaskedArray(res, mask) if name not in output_arrays
@@ -312,7 +338,7 @@ def masked_array(xp):
 
     def nonzero(x, /):
         x = asarray(x)
-        data = xp.asarray(x, copy=True)
+        data = xp.asarray(x.data, copy=True)
         data[x.mask] = 0
         res = xp.nonzero(data)
         return tuple(MaskedArray(resi) for resi in res)
@@ -321,7 +347,7 @@ def masked_array(xp):
         condition = asarray(condition)
         x1 = asarray(x1)
         x2 = asarray(x2)
-        data = xp.where(condition, x1, x2)
+        data = xp.where(condition.data, x1.data, x2.data)
         mask = condition.mask | x1.mask | x2.mask
         return MaskedArray(data, mask)
 
@@ -338,7 +364,7 @@ def masked_array(xp):
             # This seems a little inconsistent with nonzero and where, which
             # completely ignore masked elements.
             x = asarray(x)
-            data = xp.asarray(x, copy=True)
+            data = xp.asarray(x.data, copy=True)
             data[x.mask] = x._sentinel
             fun = getattr(xp, name)
             res = fun(data)
@@ -355,7 +381,7 @@ def masked_array(xp):
     def get_sort_fun(name):
         def sort_fun(x, /, *, axis=-1, descending=False, stable=True):
             x = asarray(x)
-            data = xp.asarray(x, copy=True)
+            data = xp.asarray(x.data, copy=True)
             sentinel = info(x).min if descending else info(x).max
             data[x.mask] = sentinel
             fun = getattr(xp, name)
@@ -380,7 +406,7 @@ def masked_array(xp):
                             'all': xp.asarray(True),
                             'any': xp.asarray(False)}
             x = asarray(x)
-            data = xp.asarray(x, copy=True)
+            data = xp.asarray(x.data, copy=True)
             data[x.mask] = replacements[name]
             fun = getattr(xp, name)
             res = fun(data, *args, axis=axis, **kwargs)
@@ -394,7 +420,7 @@ def masked_array(xp):
 
     def cumulative_sum(x, *args, **kwargs):
         x = asarray(x)
-        data = xp.asarray(x, copy=True)
+        data = xp.asarray(x.data, copy=True)
         data[x.mask] = 0
         res = xp.cumulative_sum(data, *args, **kwargs)
         return MaskedArray(res, x.mask)
