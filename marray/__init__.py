@@ -152,7 +152,8 @@ def masked_array(xp):
     for name in desired_names:
         def fun(self, other, name=name, **kwargs):
             if hasattr(other, 'mask'):
-                self.mask |= other.mask
+                # self.mask |= other.mask doesn't work because mask has no setter
+                self.mask.__ior__(other.mask)
             self.call_super_method(name, other)
             return self
         setattr(MaskedArray, name, fun)
@@ -231,6 +232,7 @@ def masked_array(xp):
     for name in elementwise_names:
         def fun(*args, name=name, **kwargs):
             masks = [arg.mask for arg in args if hasattr(arg, 'mask')]
+            masks = xp.broadcast_arrays(*masks)
             args = [getattr(arg, 'data', arg) for arg in args]
             out = getattr(xp, name)(*args, **kwargs)
             return MaskedArray(out, mask=xp.any(masks, axis=0))
