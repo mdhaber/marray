@@ -81,10 +81,10 @@ def masked_array(xp):
 
         ## Visualization ##
         def __repr__(self):
-            return repr(formatting.as_masked_array(self))
+            return formatting.format_repr(self)
 
         def __str__(self):
-            return str(formatting.as_masked_array(self))
+            return formatting.format_data(self.data, self.mask)
 
         ## Linear Algebra Methods ##
         def __matmul__(self, other):

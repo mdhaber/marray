@@ -7,14 +7,6 @@ import numpy as np
 replace_re = re.compile(r"(?<=['\]])(?=\s|$)")
 
 
-def as_masked_array(arr):
-    # temporary: fix for CuPy
-    # eventually: rewrite to avoid masked array
-    data = np.asarray(arr.data)
-    mask = np.asarray(arr.mask)
-    return np.ma.masked_array(data, mask)
-
-
 def dedent(text):
     return textwrap.dedent(text.lstrip("\n").rstrip())
 
