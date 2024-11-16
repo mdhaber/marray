@@ -1,5 +1,6 @@
 import re
 from functools import partial
+import textwrap
 import numpy as np
 
 # Matches between a comma or closing bracket and a space or newline
@@ -12,6 +13,10 @@ def as_masked_array(arr):
     data = np.asarray(arr.data)
     mask = np.asarray(arr.mask)
     return np.ma.masked_array(data, mask)
+
+
+def dedent(text):
+    return textwrap.dedent(text.lstrip("\n").rstrip())
 
 
 def format_data(data, mask):
@@ -27,3 +32,26 @@ def format_data(data, mask):
     formatted = np.where(mask, "--", data.astype(dtype))
     with_commas = replace_re.sub(",", str(formatted)).rstrip(",")
     return with_commas.replace("'", "")
+
+
+def format_repr(arr):
+    data_repr = format_data(arr.data, arr.mask)
+
+    template = dedent(
+        """
+        <marray.MaskedArray>
+        Data:
+        {data_repr}
+
+        Mask:
+        {mask_repr}
+
+        fill_value: {fill_value}
+        """
+    )
+
+    return template.format(
+        data_repr=data_repr,
+        mask_repr=str(arr.mask),
+        fill_value=str(arr._sentinel)
+    )
