@@ -83,6 +83,14 @@ def masked_array(xp):
         def __repr__(self):
             return formatting.format_repr(self)
 
+        def _repr_inline_(self):
+            fill_value = self._sentinel
+
+            wrapped_cls = type(self.data)
+            wrapped_cls_name = wrapped_cls.__module__ + "." + wrapped_cls.__name__
+
+            return f"<marray.MaskedArray(fill_value={fill_value}, wrapped={wrapped_cls_name})>"
+
         def __str__(self):
             return formatting.format_data(self.data, self.mask)
 
