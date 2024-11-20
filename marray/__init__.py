@@ -6,6 +6,7 @@ __version__ = "0.0.4"
 
 import numpy as np  # temporarily used in __repr__ and __str__
 
+
 def masked_array(xp):
     """Returns a masked array namespace for an array API backend
 
@@ -23,7 +24,7 @@ def masked_array(xp):
            fill_value=1e+20)
 
     """
-    class MaskedArray():
+    class MaskedArray:
 
         def __init__(self, data, mask=None):
             data = getattr(data, '_data', data)
