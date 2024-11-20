@@ -1,11 +1,6 @@
 import math
-import re
 from functools import partial
 import textwrap
-import numpy as np
-
-# Matches between a comma or closing bracket and a space or newline
-replace_re = re.compile(r"(?<=['\]])(?=\s|$)")
 
 
 def dedent(text):
@@ -77,21 +72,6 @@ def format_array(data, mask, max_outer_items=10, max_inner_items=20, visible=3):
         result = ",\n".join(head + ["..."] + tail)
 
     return f"[{indent_by_one(result)}]"
-
-
-def format_data(data, mask):
-    # Format data by converting to a string dtype, masking out the masked values,
-    # then relying on numpy.ndarray's repr
-    # TODO: This won't work for string dtypes, so to support those we need to write
-    # our own array formatting
-    try:
-        dtype = np.dtypes.StringDType
-    except AttributeError:
-        dtype = "str"
-
-    formatted = np.where(mask, "--", data.astype(dtype))
-    with_commas = replace_re.sub(",", str(formatted)).rstrip(",")
-    return with_commas.replace("'", "")
 
 
 def format_repr(arr):
