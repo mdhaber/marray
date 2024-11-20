@@ -75,7 +75,7 @@ def format_array(data, mask, max_outer_items=10, max_inner_items=20, visible=3):
 
 
 def format_repr(arr):
-    data_repr = format_data(arr.data, arr.mask)
+    data_repr = format_array(arr.data, arr.mask)
 
     template = dedent(
         """

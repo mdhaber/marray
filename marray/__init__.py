@@ -92,7 +92,7 @@ def masked_array(xp):
             return f"<marray.MaskedArray(fill_value={fill_value}, wrapped={wrapped_cls_name})>"
 
         def __str__(self):
-            return formatting.format_data(self.data, self.mask)
+            return formatting.format_array(self.data, self.mask)
 
         ## Linear Algebra Methods ##
         def __matmul__(self, other):
