@@ -32,6 +32,6 @@ def construct_marray(data, mask):
     ),
 ))
 def test_format_data(arr, expected):
-    actual = formatting.format_data(arr.data, arr.mask)
+    actual = formatting.format_array(arr.data, arr.mask)
 
     assert actual == expected
