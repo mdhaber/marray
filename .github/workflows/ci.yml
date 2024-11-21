@@ -54,7 +54,7 @@ jobs:
 
       - name: Setup environment
         run: |
-          python -m pip install numpy pytest pytest-cov
+          python -m pip install -r ci/requirements/environment.txt
 
       - name: Install marray
         run: |
