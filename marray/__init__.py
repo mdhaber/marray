@@ -4,7 +4,7 @@ Masked versions of array API compatible arrays
 
 __version__ = "0.0.4"
 
-import re
+import textwrap
 
 
 def masked_array(xp):
@@ -79,51 +79,26 @@ def masked_array(xp):
             self.mask[key] = getattr(other, 'mask', False)
             return self.data.__setitem__(key, getattr(other, 'data', other))
 
-        def _mask_integer(self, fun):
-            data = xp.asarray(self.data, dtype=xp.int64, copy=True)
-            min = xp.min(self.data)
-            sentinel = min - 1
-            assert not xp.any(data == sentinel)
-            data[self.mask] = sentinel
-            mask = "-" * len(str(sentinel))
-            temp = fun(data).replace(str(sentinel), mask)
-            if self.dtype != xp.int64:
-                temp = temp[:-1] + f", dtype={self.dtype})"
-            return temp
-
-        def _mask_bool(self, fun):
-            data = xp.asarray(self.data, dtype=xp.uint16, copy=True)
-            data[data == 0] = 11111
-            data[data == 1] = 22222
-            data[self.mask] = 33333
-            temp = fun(data).replace("11111", "False")
-            temp = temp.replace("22222", " True")
-            temp = temp.replace("33333", "-----")
-            return temp.replace("uint16", str(self.dtype))
-
-        def _mask_float(self, fun):
-            data = xp.asarray(self.data, copy=True)
-            data[data == 0] = 0
-            data[self.mask] = float("-0")
-            pattern = re.compile(r'-0(?:\.0+)?(?:[eE][+-]?\d+)?\.?')
-            return pattern.sub('---', fun(data))
-
-        def _mask_string(self, fun):
-            if xp.isdtype(self.dtype, "bool"):
-                return self._mask_bool(fun)
-            elif xp.isdtype(self.dtype, "integral"):
-                return self._mask_integer(fun)
-            elif xp.isdtype(self.dtype, "real floating"):
-                return self._mask_float(fun)
+        def _data_mask_string(self, fun):
+            data_str = fun(self.data) + ", "
+            mask_str = fun(self.mask)
+            if len(data_str) + len(mask_str) <= 66:
+                join_char = ""
+                components = ["MaskedArray(", data_str, mask_str, ")"]
             else:
-                raise NotImplementedError("No complex right now.")
+                join_char = "\n"
+                components = ["MaskedArray(",
+                              textwrap.indent(data_str, " " * 4),
+                              textwrap.indent(mask_str, " " * 4),
+                              ")"]
+            return join_char.join(components)
 
         ## Visualization ##
         def __repr__(self):
-            return self._mask_string(repr)
+            return self._data_mask_string(repr)
 
         def __str__(self):
-            return self._mask_string(str)
+            return self._data_mask_string(str)
 
         ## Linear Algebra Methods ##
         def __matmul__(self, other):
