@@ -199,9 +199,10 @@ def test_rarithmetic_binary(f, seed=None):
     ref = np.ma.masked_array(ref_data, mask=ref_mask)
     assert_equal(res, ref, seed)
 
-    # res = f(marrays[1].data, marrays[0])
-    # ref = f(masked_arrays[1].data, masked_arrays[0])
-    # assert_equal(res, ref, seed)
+    # Check that reflected operator works with Python scalar
+    res = f(2, marrays[0])
+    ref = f(2, masked_arrays[0])
+    assert_equal(res, ref, seed)
 
 
 @pytest.mark.parametrize("dtype", dtypes_integral + dtypes_boolean)
@@ -213,9 +214,9 @@ def test_rbitwise_binary(f, dtype, seed=None):
     ref = f(masked_arrays[0], masked_arrays[1].data)
     assert_equal(res, ref, seed)
 
-    # res = f(marrays[1].data, marrays[0])
-    # ref = f(masked_arrays[1].data, masked_arrays[0])
-    # assert_equal(res, ref, seed)
+    res = f(2, marrays[0])
+    ref = f(2, masked_arrays[0])
+    assert_equal(res, ref, seed)
 
 
 def test_constants(xp=np):

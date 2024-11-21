@@ -137,8 +137,7 @@ def masked_array(xp):
     # Methods that return the result of an elementwise binary operation (reflected)
     rbinary_names = ['__radd__', '__rand__', '__rdivmod__', '__rfloordiv__',
                      '__rlshift__', '__rmod__', '__rmul__', '__ror__', '__rpow__',
-                     '__rrshift__', '__rshift__', '__rsub__', '__rtruediv__',
-                     '__rxor__']
+                     '__rrshift__', '__rsub__', '__rtruediv__', '__rxor__']
     for name in binary_names + rbinary_names:
         def fun(self, other, name=name):
             mask = (self.mask | other.mask) if hasattr(other, 'mask') else self.mask
