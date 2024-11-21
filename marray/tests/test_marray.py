@@ -3,8 +3,9 @@
 # - debug reciprocal operator failures
 # - debug statistical function failures
 
-import pytest
 import numpy as np
+import pytest
+
 import marray
 
 dtypes_boolean = ['bool']
