@@ -412,13 +412,13 @@ def masked_array(xp):
             data[x.mask] = replacements[name]
             fun = getattr(xp, name)
             res = fun(data, *args, axis=axis, **kwargs)
-            mask = xp.all(x.mask, axis=axis)
+            mask = xp.all(x.mask, axis=axis, keepdims=kwargs.get('keepdims', False))
             return MaskedArray(res, mask=mask)
         return statistical_fun
 
     def count(x, axis=None, keepdims=False):
         x = asarray(x)
-        return xp.sum(x.mask, axis=axis, keepdims=keepdims)
+        return xp.sum(~x.mask, axis=axis, keepdims=keepdims)
 
     def cumulative_sum(x, *args, **kwargs):
         x = asarray(x)
@@ -443,7 +443,7 @@ def masked_array(xp):
     mod.count = count
     mod.mean = mean
     mod.var = var
-    mod.std = lambda *args, **kwargs: np.sqrt(mod.var(*args, **kwargs))
+    mod.std = lambda *args, **kwargs: mod.var(*args, **kwargs)**0.5
 
     search_names = ['argmax', 'argmin']
     statfun_names = ['max', 'min', 'sum', 'prod']

@@ -1,8 +1,3 @@
-# TODO:
-# - debug test_inplace failures
-# - debug reciprocal operator failures
-# - debug statistical function failures
-
 import numpy as np
 import pytest
 
@@ -255,21 +250,25 @@ def test_elementwise_binary(f_name, xp=np, dtype='float64', seed=None):
     assert_equal(res, ref, seed)
 
 
-# @pytest.mark.parametrize("keepdims", [False, True])
-# @pytest.mark.parametrize("f_name", statistical_array)
-# def test_statistical_array(f_name, keepdims, xp=np, dtype='float64', seed=None):
-#     # TODO: confirm that result should never have mask? Only when all are masked?
-#     mxp = marray.masked_array(xp)
-#     marrays, masked_arrays, seed = get_arrays(1, dtype=dtype, seed=seed)
-#     rng = np.random.default_rng(seed)
-#     axes = list(range(marrays[0].ndim)) + [None]
-#     axis = axes[rng.integers(marrays[0].ndim + 1)]
-#     f = getattr(mxp, f_name)
-#     f2 = getattr(xp, f_name)
-#     kwargs = {'keepdims': keepdims} if f_name != 'cumulative_sum' else {}
-#     res = f(marrays[0], axis=axis, **kwargs)
-#     ref = f2(masked_arrays[0], axis=axis, **kwargs)
-#     assert_equal(res, ref, seed)
+@pytest.mark.parametrize("keepdims", [False, True])
+@pytest.mark.parametrize("f_name", statistical_array)
+def test_statistical_array(f_name, keepdims, xp=np, dtype='float64', seed=None):
+    # TODO: confirm that result should never have mask? Only when all are masked?
+    mxp = marray.masked_array(xp)
+    marrays, masked_arrays, seed = get_arrays(1, dtype=dtype, seed=seed)
+    rng = np.random.default_rng(seed)
+    axes = list(range(marrays[0].ndim))
+    axes = axes if f_name == "cumulative_sum" else axes + [None]
+    kwargs = {} if f_name == "cumulative_sum" else {'keepdims': keepdims}
+    f_name2 = 'cumsum' if f_name == "cumulative_sum" else f_name
+
+    axis = axes[rng.integers(len(axes))]
+    f = getattr(mxp, f_name)
+    f2 = getattr(xp, f_name2)
+    res = f(marrays[0], axis=axis, **kwargs)
+    ref = f2(masked_arrays[0], axis=axis, **kwargs)
+    ref = np.ma.masked_array(ref.data, getattr(ref, 'mask', False))
+    assert_equal(res, ref, seed)
 
 
 def test_test():
