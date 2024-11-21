@@ -8,13 +8,13 @@ import pytest
 
 import marray
 
-dtypes_boolean = ['bool']
-dtypes_integral = ['uint8', 'uint16', 'uint32', 'uint64', 'int8', 'int16', 'int32', 'int64']
-dtypes_real = ['float32', 'float64']
-dtypes_complex = ['complex64', 'complex128']
+dtypes_boolean = ["bool"]
+dtypes_integral = ["uint8", "uint16", "uint32", "uint64", "int8", "int16", "int32", "int64"]
+dtypes_real = ["float32", "float64"]
+dtypes_complex = ["complex64", "complex128"]
 
 
-def get_arrays(n_arrays, *, dtype='float64', xp=np, seed=None):
+def get_arrays(n_arrays, *, dtype="float64", xp=np, seed=None):
     xpm = marray.masked_array(xp)
 
     entropy = np.random.SeedSequence(seed).entropy
@@ -31,7 +31,7 @@ def get_arrays(n_arrays, *, dtype='float64', xp=np, seed=None):
         shape_i[shape_mask] = 1
         data = rng.standard_normal(size=shape_i)
 
-        if dtype == 'bool':
+        if dtype == "bool":
             data = data > 0
         else:
             data = data.astype(dtype)
@@ -51,6 +51,7 @@ def get_arrays(n_arrays, *, dtype='float64', xp=np, seed=None):
 
     return marrays, masked_arrays, entropy
 
+
 def assert_equal(res, ref, seed):
     ref_mask = np.broadcast_to(ref.mask, ref.data.shape)
     try:
@@ -59,49 +60,155 @@ def assert_equal(res, ref, seed):
     except AssertionError as e:
         raise AssertionError(seed) from e
 
+
 arithmetic_unary = [lambda x: +x, lambda x: -x, abs]
-arithmetic_binary = [lambda x, y: x + y, lambda x, y: x - y, lambda x, y: x * y,
-                     lambda x, y: x / y, lambda x, y: x // y, lambda x, y: x % y,
-                     lambda x, y: x ** y]
+arithmetic_binary = [
+    lambda x, y: x + y,
+    lambda x, y: x - y,
+    lambda x, y: x * y,
+    lambda x, y: x / y,
+    lambda x, y: x // y,
+    lambda x, y: x % y,
+    lambda x, y: x**y,
+]
 # array operators
 bitwise_unary = [lambda x: ~x]
-bitwise_binary = [lambda x, y: x & y, lambda x, y: x | y, lambda x, y: x ^ y,
-                  lambda x, y: x << y, lambda x, y: x >> y]
-comparison_binary = [lambda x, y: x < y, lambda x, y: x <= y, lambda x, y: x > y,
-                     lambda x, y: x >= y, lambda x, y: x == y , lambda x, y: x != y]
+bitwise_binary = [
+    lambda x, y: x & y,
+    lambda x, y: x | y,
+    lambda x, y: x ^ y,
+    lambda x, y: x << y,
+    lambda x, y: x >> y,
+]
+comparison_binary = [
+    lambda x, y: x < y,
+    lambda x, y: x <= y,
+    lambda x, y: x > y,
+    lambda x, y: x >= y,
+    lambda x, y: x == y,
+    lambda x, y: x != y,
+]
 
-def iadd(x, y): x += y
-def isub(x, y): x -= y
-def imul(x, y): x *= y
-def itruediv(x, y): x /= y
-def ifloordiv(x, y): x //= y
-def ipow(x, y): x **= y
-def imod(x, y): x %= y
+
+def iadd(x, y):
+    x += y
+
+
+def isub(x, y):
+    x -= y
+
+
+def imul(x, y):
+    x *= y
+
+
+def itruediv(x, y):
+    x /= y
+
+
+def ifloordiv(x, y):
+    x //= y
+
+
+def ipow(x, y):
+    x **= y
+
+
+def imod(x, y):
+    x %= y
+
+
 inplace_arithmetic = [iadd, isub, imul, itruediv, ifloordiv, ipow, imod]
 
-def imatmul(x, y): x @= y
+
+def imatmul(x, y):
+    x @= y
+
+
 inplace_array = [imatmul]
 
-def iand(x, y): x &= y
-def ior(x, y): x |= y
-def ixor(x, y): x ^= y
-def ilshift(x, y): x <<= y
-def irshift(x, y): x >>= y
+
+def iand(x, y):
+    x &= y
+
+
+def ior(x, y):
+    x |= y
+
+
+def ixor(x, y):
+    x ^= y
+
+
+def ilshift(x, y):
+    x <<= y
+
+
+def irshift(x, y):
+    x >>= y
+
+
 inplace_bitwise = [iand, ior, ixor, ilshift, irshift]
 
 
-elementwise_unary = ['abs', 'acos', 'acosh', 'asin', 'asinh', 'atan', 'atanh',
-                     'ceil', 'cos', 'cosh', 'exp', 'expm1',
-                     'floor', 'isfinite', 'isinf', 'isnan', 'log', 'log1p',
-                     'log2', 'log10', 'logical_not', 'negative', 'positive',
-                     'sign', 'signbit', 'sin', 'sinh', 'square', 'sqrt', 'tan',
-                     'tanh', 'trunc']
-elementwise_binary = ['add', 'atan2', 'copysign', 'divide', 'equal', 'floor_divide',
-                      'greater', 'greater_equal', 'hypot', 'less', 'less_equal',
-                      'logaddexp', 'logical_and', 'logical_or', 'logical_xor',
-                      'maximum', 'minimum', 'multiply', 'not_equal', 'pow', 'subtract']
-statistical_array = ['cumulative_sum', 'max', 'mean',
-                     'min', 'prod', 'std', 'sum', 'var']
+elementwise_unary = [
+    "abs",
+    "acos",
+    "acosh",
+    "asin",
+    "asinh",
+    "atan",
+    "atanh",
+    "ceil",
+    "cos",
+    "cosh",
+    "exp",
+    "expm1",
+    "floor",
+    "isfinite",
+    "isinf",
+    "isnan",
+    "log",
+    "log1p",
+    "log2",
+    "log10",
+    "logical_not",
+    "negative",
+    "positive",
+    "sign",
+    "signbit",
+    "sin",
+    "sinh",
+    "square",
+    "sqrt",
+    "tan",
+    "tanh",
+    "trunc",
+]
+elementwise_binary = [
+    "add",
+    "atan2",
+    "copysign",
+    "divide",
+    "equal",
+    "floor_divide",
+    "greater",
+    "greater_equal",
+    "hypot",
+    "less",
+    "less_equal",
+    "logaddexp",
+    "logical_and",
+    "logical_or",
+    "logical_xor",
+    "maximum",
+    "minimum",
+    "multiply",
+    "not_equal",
+    "pow",
+    "subtract",
+]
+statistical_array = ["cumulative_sum", "max", "mean", "min", "prod", "std", "sum", "var"]
 
 """
 'bitwise_invert'
@@ -118,6 +225,7 @@ statistical_array = ['cumulative_sum', 'max', 'mean',
 'conj'
 'real'
 """
+
 
 @pytest.mark.parametrize("f", arithmetic_unary)
 def test_arithmetic_unary(f, seed=None):
@@ -225,7 +333,7 @@ def test_constants(xp=np):
 
 
 @pytest.mark.parametrize("f_name", elementwise_unary)
-def test_elementwise_unary(f_name, xp=np, dtype='float64', seed=None):
+def test_elementwise_unary(f_name, xp=np, dtype="float64", seed=None):
     # TODO: confirm that NaNs should not automatically get masked
     mxp = marray.masked_array(xp)
     marrays, masked_arrays, seed = get_arrays(1, dtype=dtype, seed=seed)
@@ -239,7 +347,7 @@ def test_elementwise_unary(f_name, xp=np, dtype='float64', seed=None):
 
 
 @pytest.mark.parametrize("f_name", elementwise_binary)
-def test_elementwise_binary(f_name, xp=np, dtype='float64', seed=None):
+def test_elementwise_binary(f_name, xp=np, dtype="float64", seed=None):
     mxp = marray.masked_array(xp)
     marrays, masked_arrays, seed = get_arrays(2, dtype=dtype, seed=seed)
     f = getattr(mxp, f_name)

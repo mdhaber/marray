@@ -4,9 +4,9 @@ build-backend = "flit_core.buildapi"
 
 [project]
 name = "marray"
-authors = [{name = "Matt Haberland", email = "mhaberla@calpoly.edu"}]
+authors = [{ name = "Matt Haberland", email = "mhaberla@calpoly.edu" }]
 readme = "README.md"
-license = {file = "LICENSE"}
+license = { file = "LICENSE" }
 classifiers = ["License :: OSI Approved :: MIT License"]
 dynamic = ["version", "description"]
 dependencies = ["numpy"]
