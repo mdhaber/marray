@@ -4,7 +4,7 @@ Masked versions of array API compatible arrays
 
 __version__ = "0.0.4"
 
-import numpy as np  # temporarily used in __repr__ and __str__
+import re
 
 
 def masked_array(xp):
@@ -79,20 +79,51 @@ def masked_array(xp):
             self.mask[key] = getattr(other, 'mask', False)
             return self.data.__setitem__(key, getattr(other, 'data', other))
 
+        def _mask_integer(self, fun):
+            data = xp.asarray(self.data, dtype=xp.int64, copy=True)
+            min = xp.min(self.data)
+            sentinel = min - 1
+            assert not xp.any(data == sentinel)
+            data[self.mask] = sentinel
+            mask = "-" * len(str(sentinel))
+            temp = fun(data).replace(str(sentinel), mask)
+            if self.dtype != xp.int64:
+                temp = temp[:-1] + f", dtype={self.dtype})"
+            return temp
+
+        def _mask_bool(self, fun):
+            data = xp.asarray(self.data, dtype=xp.uint16, copy=True)
+            data[data == 0] = 11111
+            data[data == 1] = 22222
+            data[self.mask] = 33333
+            temp = fun(data).replace("11111", "False")
+            temp = temp.replace("22222", " True")
+            temp = temp.replace("33333", "-----")
+            return temp.replace("uint16", str(self.dtype))
+
+        def _mask_float(self, fun):
+            data = xp.asarray(self.data, copy=True)
+            data[data == 0] = 0
+            data[self.mask] = float("-0")
+            pattern = re.compile(r'-0(?:\.0+)?(?:[eE][+-]?\d+)?\.?')
+            return pattern.sub('---', fun(data))
+
+        def _mask_string(self, fun):
+            if xp.isdtype(self.dtype, "bool"):
+                return self._mask_bool(fun)
+            elif xp.isdtype(self.dtype, "integral"):
+                return self._mask_integer(fun)
+            elif xp.isdtype(self.dtype, "real floating"):
+                return self._mask_float(fun)
+            else:
+                raise NotImplementedError("No complex right now.")
+
         ## Visualization ##
         def __repr__(self):
-            # temporary: fix for CuPy
-            # eventually: rewrite to avoid masked array
-            data = np.asarray(self.data)
-            mask = np.asarray(self.mask)
-            return np.ma.masked_array(data, mask).__repr__()
+            return self._mask_string(repr)
 
         def __str__(self):
-            # temporary: fix for CuPy
-            # eventually: rewrite to avoid masked array
-            data = np.asarray(self.data)
-            mask = np.asarray(self.mask)
-            return np.ma.masked_array(data, mask).__str__()
+            return self._mask_string(str)
 
         ## Linear Algebra Methods ##
         def __matmul__(self, other):
@@ -444,7 +475,7 @@ def masked_array(xp):
     mod.count = count
     mod.mean = mean
     mod.var = var
-    mod.std = lambda *args, **kwargs: np.sqrt(mod.var(*args, **kwargs))
+    mod.std = lambda *args, **kwargs: mod.var(*args, **kwargs)**0.5
 
     search_names = ['argmax', 'argmin']
     statfun_names = ['max', 'min', 'sum', 'prod']
