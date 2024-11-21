@@ -24,12 +24,14 @@ def masked_array(xp):
            fill_value=1e+20)
 
     """
+
     class MaskedArray:
 
         def __init__(self, data, mask=None):
-            data = getattr(data, '_data', data)
-            mask = (xp.zeros(data.shape, dtype=bool) if mask is None
-                    else xp.asarray(mask, dtype=bool))
+            data = getattr(data, "_data", data)
+            mask = (
+                xp.zeros(data.shape, dtype=bool) if mask is None else xp.asarray(mask, dtype=bool)
+            )
             mask = xp.asarray(xp.broadcast_to(mask, data.shape), copy=True)
             self._data = data
             self._dtype = data.dtype
@@ -39,8 +41,7 @@ def masked_array(xp):
 
             self._mask = mask
             self._xp = xp
-            self._sentinel = (info(self).max if not xp.isdtype(self.dtype, 'bool')
-                              else None)
+            self._sentinel = info(self).max if not xp.isdtype(self.dtype, "bool") else None
 
         @property
         def data(self):
@@ -68,7 +69,7 @@ def masked_array(xp):
 
         def call_super_method(self, method_name, *args, **kwargs):
             method = getattr(self.data, method_name)
-            args = [getattr(arg, 'data', arg) for arg in args]
+            args = [getattr(arg, "data", arg) for arg in args]
             return method(*args, **kwargs)
 
         ## Indexing ##
@@ -76,8 +77,8 @@ def masked_array(xp):
             return MaskedArray(self.data[key], self.mask[key])
 
         def __setitem__(self, key, other):
-            self.mask[key] = getattr(other, 'mask', False)
-            return self.data.__setitem__(key, getattr(other, 'data', other))
+            self.mask[key] = getattr(other, "mask", False)
+            return self.data.__setitem__(key, getattr(other, "data", other))
 
         ## Visualization ##
         def __repr__(self):
@@ -114,49 +115,95 @@ def masked_array(xp):
     ## Methods ##
 
     # Methods that return the result of a unary operation as an array
-    unary_names = (['__abs__', '__floordiv__', '__invert__', '__neg__', '__pos__']
-                   + ['__ceil__'])
+    unary_names = ["__abs__", "__floordiv__", "__invert__", "__neg__", "__pos__"] + ["__ceil__"]
     for name in unary_names:
+
         def fun(self, name=name):
             data = self.call_super_method(name)
             return MaskedArray(data, self.mask)
+
         setattr(MaskedArray, name, fun)
 
     # Methods that return the result of a unary operation as a Python scalar
-    unary_names_py = ['__bool__', '__complex__', '__float__', '__index__', '__int__']
+    unary_names_py = ["__bool__", "__complex__", "__float__", "__index__", "__int__"]
     for name in unary_names_py:
+
         def fun(self, name=name):
             return self.call_super_method(name)
+
         setattr(MaskedArray, name, fun)
 
     # Methods that return the result of an elementwise binary operation
-    binary_names = ['__add__', '__sub__', '__and__', '__eq__', '__ge__', '__gt__',
-                    '__le__', '__lshift__', '__lt__', '__mod__', '__mul__', '__ne__',
-                    '__or__', '__pow__', '__rshift__', '__sub__', '__truediv__',
-                    '__xor__'] + ['__divmod__', '__floordiv__']
+    binary_names = [
+        "__add__",
+        "__sub__",
+        "__and__",
+        "__eq__",
+        "__ge__",
+        "__gt__",
+        "__le__",
+        "__lshift__",
+        "__lt__",
+        "__mod__",
+        "__mul__",
+        "__ne__",
+        "__or__",
+        "__pow__",
+        "__rshift__",
+        "__sub__",
+        "__truediv__",
+        "__xor__",
+    ] + ["__divmod__", "__floordiv__"]
     # Methods that return the result of an elementwise binary operation (reflected)
-    rbinary_names = ['__radd__', '__rand__', '__rdivmod__', '__rfloordiv__',
-                     '__rlshift__', '__rmod__', '__rmul__', '__ror__', '__rpow__',
-                     '__rrshift__', '__rshift__', '__rsub__', '__rtruediv__',
-                     '__rxor__']
+    rbinary_names = [
+        "__radd__",
+        "__rand__",
+        "__rdivmod__",
+        "__rfloordiv__",
+        "__rlshift__",
+        "__rmod__",
+        "__rmul__",
+        "__ror__",
+        "__rpow__",
+        "__rrshift__",
+        "__rshift__",
+        "__rsub__",
+        "__rtruediv__",
+        "__rxor__",
+    ]
     for name in binary_names + rbinary_names:
+
         def fun(self, other, name=name):
-            mask = (self.mask | other.mask) if hasattr(other, 'mask') else self.mask
+            mask = (self.mask | other.mask) if hasattr(other, "mask") else self.mask
             data = self.call_super_method(name, other)
             return MaskedArray(data, mask)
+
         setattr(MaskedArray, name, fun)
 
     # In-place methods
-    desired_names = ['__iadd__', '__iand__', '__ifloordiv__', '__ilshift__',
-                     '__imod__', '__imul__', '__ior__', '__ipow__', '__irshift__',
-                     '__isub__', '__itruediv__', '__ixor__']
+    desired_names = [
+        "__iadd__",
+        "__iand__",
+        "__ifloordiv__",
+        "__ilshift__",
+        "__imod__",
+        "__imul__",
+        "__ior__",
+        "__ipow__",
+        "__irshift__",
+        "__isub__",
+        "__itruediv__",
+        "__ixor__",
+    ]
     for name in desired_names:
+
         def fun(self, other, name=name, **kwargs):
-            if hasattr(other, 'mask'):
+            if hasattr(other, "mask"):
                 # self.mask |= other.mask doesn't work because mask has no setter
                 self.mask.__ior__(other.mask)
             self.call_super_method(name, other)
             return self
+
         setattr(MaskedArray, name, fun)
 
     # Inherited
@@ -168,7 +215,7 @@ def masked_array(xp):
 
     def info(x):
         xp = x._xp
-        if xp.isdtype(x.dtype, 'integral'):
+        if xp.isdtype(x.dtype, "integral"):
             return xp.iinfo(x.dtype)
         else:
             return xp.finfo(x.dtype)
@@ -179,7 +226,7 @@ def masked_array(xp):
     mod = module()
 
     ## Constants ##
-    constant_names = ['e', 'inf', 'nan', 'newaxis', 'pi']
+    constant_names = ["e", "inf", "nan", "newaxis", "pi"]
     for name in constant_names:
         setattr(mod, name, getattr(xp, name))
 
@@ -188,55 +235,141 @@ def masked_array(xp):
         if device is not None:
             raise NotImplementedError()
 
-        data = getattr(obj, 'data', obj)
-        mask = (getattr(obj, 'mask', xp.full(data.shape, False))
-                if mask is None else mask)
+        data = getattr(obj, "data", obj)
+        mask = getattr(obj, "mask", xp.full(data.shape, False)) if mask is None else mask
 
         data = xp.asarray(data, dtype=dtype, device=device, copy=copy)
         mask = xp.asarray(mask, dtype=dtype, device=device, copy=copy)
         return MaskedArray(data, mask=mask)
+
     mod.asarray = asarray
 
-    creation_functions = ['arange', 'empty', 'empty_like', 'eye', 'from_dlpack',
-                          'full', 'full_like', 'linspace', 'meshgrid', 'ones',
-                          'ones_like', 'tril', 'triu', 'zeros', 'zeros_like']
+    creation_functions = [
+        "arange",
+        "empty",
+        "empty_like",
+        "eye",
+        "from_dlpack",
+        "full",
+        "full_like",
+        "linspace",
+        "meshgrid",
+        "ones",
+        "ones_like",
+        "tril",
+        "triu",
+        "zeros",
+        "zeros_like",
+    ]
     for name in creation_functions:
+
         def fun(*args, name=name, **kwargs):
             data = getattr(xp, name)(*args, **kwargs)
             return MaskedArray(data)
+
         setattr(mod, name, fun)
 
     ## Data Type Functions and Data Types ##
-    dtype_fun_names = ['can_cast', 'finfo', 'iinfo', 'isdtype', 'result_type']
-    dtype_names = ['bool', 'int8', 'int16', 'int32', 'int64', 'uint8', 'uint16',
-                   'uint32', 'uint64', 'float32', 'float64', 'complex64', 'complex128']
+    dtype_fun_names = ["can_cast", "finfo", "iinfo", "isdtype", "result_type"]
+    dtype_names = [
+        "bool",
+        "int8",
+        "int16",
+        "int32",
+        "int64",
+        "uint8",
+        "uint16",
+        "uint32",
+        "uint64",
+        "float32",
+        "float64",
+        "complex64",
+        "complex128",
+    ]
     for name in dtype_fun_names + dtype_names:
         setattr(mod, name, getattr(xp, name))
 
-    mod.astype = (lambda x, dtype, /, *, copy=True, **kwargs:
-                  asarray(x, copy=copy or (dtype != x.dtype), dtype=dtype, **kwargs))
+    mod.astype = lambda x, dtype, /, *, copy=True, **kwargs: asarray(
+        x, copy=copy or (dtype != x.dtype), dtype=dtype, **kwargs
+    )
 
     ## Elementwise Functions ##
-    elementwise_names = ['abs', 'acos', 'acosh', 'add', 'asin', 'asinh', 'atan',
-                         'atan2', 'atanh', 'bitwise_and', 'bitwise_left_shift',
-                         'bitwise_invert', 'bitwise_or', 'bitwise_right_shift',
-                         'bitwise_xor', 'ceil', 'clip', 'conj', 'copysign', 'cos',
-                         'cosh', 'divide', 'equal', 'exp', 'expm1', 'floor',
-                         'floor_divide', 'greater', 'greater_equal', 'hypot',
-                         'imag', 'isfinite', 'isinf', 'isnan', 'less', 'less_equal',
-                         'log', 'log1p', 'log2', 'log10', 'logaddexp', 'logical_and',
-                         'logical_not', 'logical_or', 'logical_xor', 'maximum',
-                         'minimum', 'multiply', 'negative', 'not_equal', 'positive',
-                         'pow', 'real', 'remainder', 'round', 'sign', 'signbit',
-                         'sin', 'sinh', 'square', 'sqrt', 'subtract', 'tan', 'tanh',
-                         'trunc']
+    elementwise_names = [
+        "abs",
+        "acos",
+        "acosh",
+        "add",
+        "asin",
+        "asinh",
+        "atan",
+        "atan2",
+        "atanh",
+        "bitwise_and",
+        "bitwise_left_shift",
+        "bitwise_invert",
+        "bitwise_or",
+        "bitwise_right_shift",
+        "bitwise_xor",
+        "ceil",
+        "clip",
+        "conj",
+        "copysign",
+        "cos",
+        "cosh",
+        "divide",
+        "equal",
+        "exp",
+        "expm1",
+        "floor",
+        "floor_divide",
+        "greater",
+        "greater_equal",
+        "hypot",
+        "imag",
+        "isfinite",
+        "isinf",
+        "isnan",
+        "less",
+        "less_equal",
+        "log",
+        "log1p",
+        "log2",
+        "log10",
+        "logaddexp",
+        "logical_and",
+        "logical_not",
+        "logical_or",
+        "logical_xor",
+        "maximum",
+        "minimum",
+        "multiply",
+        "negative",
+        "not_equal",
+        "positive",
+        "pow",
+        "real",
+        "remainder",
+        "round",
+        "sign",
+        "signbit",
+        "sin",
+        "sinh",
+        "square",
+        "sqrt",
+        "subtract",
+        "tan",
+        "tanh",
+        "trunc",
+    ]
     for name in elementwise_names:
+
         def fun(*args, name=name, **kwargs):
-            masks = [arg.mask for arg in args if hasattr(arg, 'mask')]
+            masks = [arg.mask for arg in args if hasattr(arg, "mask")]
             masks = xp.broadcast_arrays(*masks)
-            args = [getattr(arg, 'data', arg) for arg in args]
+            args = [getattr(arg, "data", arg) for arg in args]
             out = getattr(xp, name)(*args, **kwargs)
             return MaskedArray(out, mask=xp.any(masks, axis=0))
+
         setattr(mod, name, fun)
 
     ## Indexing Functions
@@ -253,7 +386,9 @@ def masked_array(xp):
 
         shape = list(arr.shape)
         shape.pop(-1)
-        shape = shape + [n,]
+        shape = shape + [
+            n,
+        ]
 
         arr = xp.reshape(arr, (-1,))
         indices = xp.reshape(indices, (-1, n))
@@ -264,6 +399,7 @@ def masked_array(xp):
         out = arr[indices]
         out = xp.reshape(out, shape)
         return xp_swapaxes(out, axis, -1)
+
     mod._xp_take_along_axis = xp_take_along_axis
 
     ## Inspection ##
@@ -288,51 +424,67 @@ def masked_array(xp):
             data = fun(data1, data2)
             mask = ~fun(~x1.mask, ~x2.mask)
             return MaskedArray(data, mask)
+
         return linalg_fun
 
-    linalg_names = ['matmul', 'tensordot', 'vecdot']
+    linalg_names = ["matmul", "tensordot", "vecdot"]
     for name in linalg_names:
         setattr(mod, name, get_linalg_fun(name))
 
     ## Manipulation Functions ##
-    first_arg_arrays = {'broadcast_arrays', 'concat', 'stack'}
-    output_arrays = {'broadcast_arrays', 'unstack'}
+    first_arg_arrays = {"broadcast_arrays", "concat", "stack"}
+    output_arrays = {"broadcast_arrays", "unstack"}
 
     def get_manip_fun(name):
         def manip_fun(x, *args, **kwargs):
-            x = (asarray(x) if name not in first_arg_arrays
-                 else [asarray(xi) for xi in x])
-            mask = (x.mask if name not in first_arg_arrays
-                    else [xi.mask for xi in x])
-            data = (x.data if name not in first_arg_arrays
-                    else [xi.data for xi in x])
+            x = asarray(x) if name not in first_arg_arrays else [asarray(xi) for xi in x]
+            mask = x.mask if name not in first_arg_arrays else [xi.mask for xi in x]
+            data = x.data if name not in first_arg_arrays else [xi.data for xi in x]
 
             fun = getattr(xp, name)
 
-            if name == 'broadcast_arrays':
+            if name == "broadcast_arrays":
                 res = fun(*data, *args, **kwargs)
                 mask = fun(*mask, *args, **kwargs)
             else:
                 res = fun(data, *args, **kwargs)
                 mask = fun(mask, *args, **kwargs)
 
-            out = (MaskedArray(res, mask) if name not in output_arrays
-                   else [MaskedArray(resi, maski) for resi, maski in zip(res, mask)])
+            out = (
+                MaskedArray(res, mask)
+                if name not in output_arrays
+                else [MaskedArray(resi, maski) for resi, maski in zip(res, mask)]
+            )
             return out
+
         return manip_fun
 
-    manip_names = ['broadcast_arrays', 'broadcast_to', 'concat', 'expand_dims',
-                   'flip', 'moveaxis', 'permute_dims', 'repeat', 'reshape',
-                   'roll', 'squeeze', 'stack', 'tile', 'unstack']
+    manip_names = [
+        "broadcast_arrays",
+        "broadcast_to",
+        "concat",
+        "expand_dims",
+        "flip",
+        "moveaxis",
+        "permute_dims",
+        "repeat",
+        "reshape",
+        "roll",
+        "squeeze",
+        "stack",
+        "tile",
+        "unstack",
+    ]
     for name in manip_names:
         setattr(mod, name, get_manip_fun(name))
-    mod.broadcast_arrays = lambda *arrays: get_manip_fun('broadcast_arrays')(arrays)
+    mod.broadcast_arrays = lambda *arrays: get_manip_fun("broadcast_arrays")(arrays)
 
     # This is just for regular arrays; not masked arrays
     def xp_swapaxes(arr, axis1, axis2):
         axes = list(range(arr.ndim))
         axes[axis1], axes[axis2] = axes[axis2], axes[axis1]
         return xp.permute_dims(arr, axes)
+
     mod.xp_swapaxes = xp_swapaxes
 
     ## Searching Functions
@@ -372,11 +524,15 @@ def masked_array(xp):
             fun = getattr(xp, name)
             res = fun(data)
             # this sort of works but could be refined
-            return (MaskedArray(res, res==x._sentinel) if name=='unique_values'
-                    else tuple(MaskedArray(resi, resi==x._sentinel) for resi in res))
+            return (
+                MaskedArray(res, res == x._sentinel)
+                if name == "unique_values"
+                else tuple(MaskedArray(resi, resi == x._sentinel) for resi in res)
+            )
+
         return set_fun
 
-    unique_names = ['unique_values', 'unique_counts', 'unique_inverse', 'unique_all']
+    unique_names = ["unique_values", "unique_counts", "unique_inverse", "unique_all"]
     for name in unique_names:
         setattr(mod, name, get_set_fun(name))
 
@@ -389,25 +545,28 @@ def masked_array(xp):
             data[x.mask] = sentinel
             fun = getattr(xp, name)
             res = fun(data, axis=axis, descending=descending, stable=stable)
-            mask = (res == sentinel) if name=='sort' else None
+            mask = (res == sentinel) if name == "sort" else None
             return MaskedArray(res, mask)
+
         return sort_fun
 
-    sort_names = ['sort', 'argsort']
+    sort_names = ["sort", "argsort"]
     for name in sort_names:
         setattr(mod, name, get_sort_fun(name))
 
     ## Statistical Functions and Utility Functions ##
     def get_statistical_fun(name):
         def statistical_fun(x, *args, axis=None, name=name, **kwargs):
-            replacements = {'max': info(x).min,
-                            'min': info(x).max,
-                            'sum': 0,
-                            'prod': 1,
-                            'argmax': info(x).min,
-                            'argmin': info(x).max,
-                            'all': xp.asarray(True),
-                            'any': xp.asarray(False)}
+            replacements = {
+                "max": info(x).min,
+                "min": info(x).max,
+                "sum": 0,
+                "prod": 1,
+                "argmax": info(x).min,
+                "argmin": info(x).max,
+                "all": xp.asarray(True),
+                "any": xp.asarray(False),
+            }
             x = asarray(x)
             data = xp.asarray(x.data, copy=True)
             data[x.mask] = replacements[name]
@@ -415,6 +574,7 @@ def masked_array(xp):
             res = fun(data, *args, axis=axis, **kwargs)
             mask = xp.all(x.mask, axis=axis)
             return MaskedArray(res, mask=mask)
+
         return statistical_fun
 
     def count(x, axis=None, keepdims=False):
@@ -446,9 +606,9 @@ def masked_array(xp):
     mod.var = var
     mod.std = lambda *args, **kwargs: np.sqrt(mod.var(*args, **kwargs))
 
-    search_names = ['argmax', 'argmin']
-    statfun_names = ['max', 'min', 'sum', 'prod']
-    utility_names = ['all', 'any']
+    search_names = ["argmax", "argmin"]
+    statfun_names = ["max", "min", "sum", "prod"]
+    utility_names = ["all", "any"]
     for name in search_names + statfun_names + utility_names:
         setattr(mod, name, get_statistical_fun(name))
     mod.cumulative_sum = cumulative_sum
