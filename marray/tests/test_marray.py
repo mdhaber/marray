@@ -164,26 +164,29 @@ def test_comparison_binary(f, dtype, seed=None):
     assert_equal(res, ref, seed)
 
 
-# @pytest.mark.parametrize("dtype", dtypes_integral + dtypes_real)
-# @pytest.mark.parametrize("f", inplace_arithmetic + inplace_bitwise)
-# def test_inplace(f, dtype, seed=None):
-#     marrays, masked_arrays, seed = get_arrays(2, dtype=dtype, seed=seed)
-#     e1 = None
-#     e2 = None
-#
-#     try:
-#         f(masked_arrays[0], masked_arrays[1])
-#     except Exception as e:
-#         e1 = e
-#     try:
-#         f(marrays[0], marrays[1])
-#     except Exception as e:
-#         e2 = e
-#
-#     if e1 or e2:
-#         assert str(e1) == str(e2)
-#     else:
-#         assert_equal(marrays[0], masked_arrays[0], seed)
+@pytest.mark.parametrize("dtype", dtypes_integral + dtypes_real)
+@pytest.mark.parametrize("f", inplace_arithmetic + inplace_bitwise)
+def test_inplace(f, dtype, seed=None):
+    marrays, masked_arrays, seed = get_arrays(2, dtype=dtype, seed=seed)
+    e1 = None
+    e2 = None
+
+    try:
+        f(masked_arrays[0].data, masked_arrays[1].data)
+        masked_arrays[0].mask |= masked_arrays[1].mask
+        masked_arrays[0] = np.ma.masked_array(masked_arrays[0].data, masked_arrays[0].mask)
+    except Exception as e:
+        e1 = str(e)
+    try:
+        f(marrays[0], marrays[1])
+    except Exception as e:
+        e2 = str(e)
+
+    # either there is something wrong with both or the two results agree
+    if e1 or e2:
+        assert e1 and e2
+    else:
+        assert_equal(marrays[0], masked_arrays[0], seed)
 
 
 @pytest.mark.parametrize("f", arithmetic_binary)
