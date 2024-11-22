@@ -111,7 +111,8 @@ def masked_array(xp):
             return
 
         def __rmatmul__(self, other):
-            return mod.matmul(self, other)
+            other = MaskedArray(other)
+            return mod.matmul(other, self)
 
         ## Attributes ##
 
@@ -297,7 +298,11 @@ def masked_array(xp):
             data2[x2.mask] = 0
             fun = getattr(xp, name)
             data = fun(data1, data2)
-            mask = ~fun(~x1.mask, ~x2.mask)
+            # Strict array can't do arithmetic with booleans
+            # mask = ~fun(~x1.mask, ~x2.mask)
+            mask = fun(xp.astype(~x1.mask, xp.uint64),
+                       xp.astype(~x2.mask, xp.uint64))
+            mask = ~xp.astype(mask, xp.bool)
             return MaskedArray(data, mask)
         return linalg_fun
 

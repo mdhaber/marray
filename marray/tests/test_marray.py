@@ -229,8 +229,11 @@ def test_inplace_array_binary(f, xp=np, seed=None):
     data = rng.random((3, 10, 10))
     mask = rng.random((3, 10, 10)) > 0.5
     a = mxp.asarray(data.copy(), mask=mask.copy())
-    ref = a @ a.mT
-    f(a, a.mT)
+    data = rng.random((3, 10, 10))
+    mask = rng.random((3, 10, 10)) > 0.5
+    b = mxp.asarray(data.copy(), mask=mask.copy())
+    ref = a @ b
+    f(a, b)
     assert_allclose(a, ref, seed)
 
 
@@ -252,6 +255,22 @@ def test_rarithmetic_binary(f, dtype, seed=None):
     res = f(2, marrays[0])
     ref = f(getattr(np, dtype)(2), masked_arrays[0])
     assert_equal(res, ref, seed)
+
+
+def test_rarray_binary(xp=np, seed=None):
+    # very restrictive operator -> limited test
+    mxp = marray.masked_array(strict)
+    rng = np.random.default_rng(seed)
+    data = rng.random((3, 10, 10))
+    mask = rng.random((3, 10, 10)) > 0.5
+    a = mxp.asarray(data, mask=mask)
+    data = rng.random((3, 10, 10))
+    mask = rng.random((3, 10, 10)) > 0.5
+    b = mxp.asarray(data.copy(), mask=mask.copy())
+    res = a.data @ b
+    ref = mxp.asarray(a.data) @ b
+    np.testing.assert_equal(np.asarray(res.data), np.asarray(ref.data))
+    np.testing.assert_equal(np.asarray(res.mask), np.asarray(ref.mask))
 
 
 @pytest.mark.parametrize("dtype", dtypes_integral)
