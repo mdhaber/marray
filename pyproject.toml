@@ -68,4 +68,5 @@ exclude_lines = ["pragma: no cover", "if TYPE_CHECKING"]
 filterwarnings = [
     "error:::marray.*",
     "ignore:invalid value encountered:RuntimeWarning",
+    "ignore:divide by zero encountered:RuntimeWarning",
 ]
