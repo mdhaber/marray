@@ -221,6 +221,19 @@ def test_inplace(f, dtype, seed=None):
         assert_equal(marrays[0], masked_arrays[0], seed)
 
 
+@pytest.mark.parametrize("f", inplace_array)
+def test_inplace_array_binary(f, xp=np, seed=None):
+    # very restrictive operator -> limited test
+    mxp = marray.masked_array(xp)
+    rng = np.random.default_rng(seed)
+    data = rng.random((3, 10, 10))
+    mask = rng.random((3, 10, 10)) > 0.5
+    a = mxp.asarray(data.copy(), mask=mask.copy())
+    ref = a @ a.mT
+    f(a, a.mT)
+    assert_allclose(a, ref, seed)
+
+
 @pytest.mark.parametrize("dtype", dtypes_real)
 @pytest.mark.parametrize("f", arithmetic_binary)
 def test_rarithmetic_binary(f, dtype, seed=None):

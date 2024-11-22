@@ -104,6 +104,12 @@ def masked_array(xp):
         def __matmul__(self, other):
             return mod.matmul(self, other)
 
+        def __imatmul__(self, other):
+            res = mod.matmul(self, other)
+            self.data[...] = res.data[...]
+            self.mask[...] = res.mask[...]
+            return
+
         def __rmatmul__(self, other):
             return mod.matmul(self, other)
 
