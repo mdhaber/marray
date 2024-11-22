@@ -1,4 +1,6 @@
 import operator
+import itertools
+
 import numpy as np
 import pytest
 import array_api_strict as strict
@@ -67,18 +69,47 @@ def assert_allclose(res, ref, seed, **kwargs):
 
 
 arithmetic_unary = [lambda x: +x, lambda x: -x, abs]
+arithmetic_methods_unary = [lambda x: x.__abs__(), lambda x: x.__neg__(),
+                            lambda x: x.__pos__()]
 arithmetic_binary = [lambda x, y: x + y, lambda x, y: x - y, lambda x, y: x * y,
                      lambda x, y: x / y, lambda x, y: x // y, lambda x, y: x % y,
                      lambda x, y: x ** y]
+arithmetic_methods_binary = [lambda x, y: x.__add__(y), lambda x, y: x.__floordiv__(y),
+                             lambda x, y: x.__mod__(y), lambda x, y: x.__mul__(y),
+                             lambda x, y: x.__pow__(y), lambda x, y: x.__sub__(y),
+                             lambda x, y: x.__truediv__(y)]
 array_binary = [lambda x, y: x @ y, operator.matmul, operator.__matmul__]
+array_methods_binary = [lambda x, y: x.__matmul__(y)]
 bitwise_unary = {'bitwise_invert': lambda x: ~x}
+bitwise_methods_unary = {'bitwise_invert': lambda x: x.__invert__()}
 bitwise_binary = {'bitwise_and': lambda x, y: x & y,
                   'bitwise_or': lambda x, y: x | y,
                   'bitwise_xor': lambda x, y: x ^ y,
                   'bitwise_left_shift': lambda x, y: x << y,
                   'bitwise_right_shift': lambda x, y: x >> y}
+bitwise_methods_binary = {'bitwise_and': lambda x, y: x.__and__(y),
+                          'bitwise_or': lambda x, y: x.__or__(y),
+                          'bitwise_left_shift': lambda x, y: x.__lshift__(y),
+                          'bitwise_right_shift': lambda x, y: x.__rshift__(y),
+                          'bitwise_xor': lambda x, y: x.__xor__(y)}
+
+# __array_namespace__
+# __bool__
+# __complex__
+# __dlpack__
+# __dlpack_device__
+# __float__
+# __getitem__
+# __index__
+# __int__
+# __setitem__
+# __to_device__
+
 comparison_binary = [lambda x, y: x < y, lambda x, y: x <= y, lambda x, y: x > y,
                      lambda x, y: x >= y, lambda x, y: x == y , lambda x, y: x != y]
+comparison_methods_binary = [lambda x, y: x.__eq__(y), lambda x, y: x.__ge__(y),
+                             lambda x, y: x.__gt__(y), lambda x, y: x.__le__(y),
+                             lambda x, y: x.__lt__(y), lambda x, y: x.__ne__(y)]
 
 def iadd(x, y): x += y
 def isub(x, y): x -= y
@@ -119,7 +150,7 @@ statistical_array = ['cumulative_sum', 'max', 'mean',
 'real'
 """
 
-@pytest.mark.parametrize("f", arithmetic_unary)
+@pytest.mark.parametrize("f", arithmetic_unary + arithmetic_methods_unary)
 def test_arithmetic_unary(f, seed=None):
     marrays, masked_arrays, seed = get_arrays(1, seed=seed)
     res = f(marrays[0])
@@ -127,7 +158,7 @@ def test_arithmetic_unary(f, seed=None):
     assert_equal(res, ref, seed)
 
 
-@pytest.mark.parametrize("f", arithmetic_binary)
+@pytest.mark.parametrize("f", arithmetic_binary + arithmetic_methods_binary)
 def test_arithmetic_binary(f, seed=None):
     marrays, masked_arrays, seed = get_arrays(2, seed=seed)
     res = f(marrays[0], marrays[1])
@@ -137,7 +168,7 @@ def test_arithmetic_binary(f, seed=None):
     assert_equal(res, ref, seed)
 
 
-@pytest.mark.parametrize("f", array_binary)
+@pytest.mark.parametrize("f", array_binary + array_methods_binary)
 def test_array_binary(f, seed=None):
     marrays, masked_arrays, seed = get_arrays(1, seed=seed)
     if marrays[0].ndim < 2:
@@ -156,7 +187,8 @@ def test_array_binary(f, seed=None):
 
 
 @pytest.mark.parametrize("dtype", dtypes_integral + dtypes_boolean)
-@pytest.mark.parametrize("f_name_fun", bitwise_unary.items())
+@pytest.mark.parametrize("f_name_fun", itertools.chain(bitwise_unary.items(),
+                                                       bitwise_methods_unary.items()))
 def test_bitwise_unary(f_name_fun, dtype, xp=np, seed=None):
     f_name, f = f_name_fun
     mxp = marray.masked_array(xp)
@@ -172,7 +204,8 @@ def test_bitwise_unary(f_name_fun, dtype, xp=np, seed=None):
 
 
 @pytest.mark.parametrize("dtype", dtypes_integral + dtypes_boolean)
-@pytest.mark.parametrize("f_name_fun", bitwise_binary.items())
+@pytest.mark.parametrize("f_name_fun", itertools.chain(bitwise_binary.items(),
+                                                       bitwise_methods_binary.items()))
 def test_bitwise_binary(f_name_fun, dtype, xp=np, seed=None):
     f_name, f = f_name_fun
     mxp = marray.masked_array(xp)
@@ -188,7 +221,7 @@ def test_bitwise_binary(f_name_fun, dtype, xp=np, seed=None):
 
 
 @pytest.mark.parametrize("dtype", dtypes_integral + dtypes_real)
-@pytest.mark.parametrize("f", comparison_binary)
+@pytest.mark.parametrize("f", comparison_binary + comparison_methods_binary)
 def test_comparison_binary(f, dtype, seed=None):
     marrays, masked_arrays, seed = get_arrays(2, dtype=dtype, seed=seed)
     res = f(marrays[0], marrays[1])
@@ -206,7 +239,8 @@ def test_inplace(f, dtype, seed=None):
     try:
         f(masked_arrays[0].data, masked_arrays[1].data)
         masked_arrays[0].mask |= masked_arrays[1].mask
-        masked_arrays[0] = np.ma.masked_array(masked_arrays[0].data, masked_arrays[0].mask)
+        masked_arrays[0] = np.ma.masked_array(masked_arrays[0].data,
+                                              masked_arrays[0].mask)
     except Exception as e:
         e1 = str(e)
     try:
@@ -308,6 +342,13 @@ def test_constants(xp=np):
     assert np.isnan(mxp.nan) == np.isnan(xp.nan)
     assert mxp.newaxis == xp.newaxis
     assert mxp.pi == xp.pi
+
+
+@pytest.mark.parametrize("dtype", dtypes_all)
+def test_dtypes(dtype, xp=strict):
+    # NumPy fails... unclear whether xp.bool must be a "dtype"
+    mxp = marray.masked_array(xp)
+    getattr(mxp, dtype).__eq__(getattr(xp, dtype))
 
 
 @pytest.mark.parametrize("f_name", elementwise_unary)
