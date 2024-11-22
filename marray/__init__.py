@@ -43,6 +43,7 @@ def masked_array(xp):
             self._xp = xp
             self._sentinel = (info(self).max if not xp.isdtype(self.dtype, 'bool')
                               else None)
+            self.__array_namespace__ = mod
 
         @property
         def data(self):
@@ -172,7 +173,6 @@ def masked_array(xp):
         setattr(MaskedArray, name, fun)
 
     # To be added
-    # __array_namespace__
     # __dlpack__, __dlpack_device__
     # to_device?
 

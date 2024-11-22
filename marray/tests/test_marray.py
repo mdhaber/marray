@@ -146,7 +146,7 @@ elementwise_binary = ['add', 'atan2', 'copysign', 'divide', 'equal', 'floor_divi
                       'logaddexp', 'logical_and', 'logical_or', 'logical_xor',
                       'maximum', 'minimum', 'multiply', 'not_equal', 'pow',
                       'remainder', 'subtract']
-searching_array = ['argmax', 'argmin']
+searching_array = ['argmax', 'argmin']  # NumPy masked array funcs not good references
 statistical_array = ['cumulative_sum', 'max', 'mean',
                      'min', 'prod', 'std', 'sum', 'var']
 utility_array = ['all', 'any']
@@ -423,10 +423,13 @@ def test_statistical_array(f_name, keepdims, xp=np, dtype='float64', seed=None):
 # Manipulation functions (apply to data and mask separately)
 
 #?
-# Searching functions - finish testing argmin/argmax with above
+# Searching functions - would test argmin/argmax with statistical functions,
+#                       but NumPy masked version isn't correct
 # Set functions
 # Sorting functions
+# __array_namespace__
 
 def test_test():
-    seed = 8377009968503871097350278305436713931
+    seed = 149020664425889521094089537542803361848
+    # test_statistical_array('argmin', True, seed=seed)
     test_rarithmetic_binary(arithmetic_binary[0], 'float32', seed=seed)
