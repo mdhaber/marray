@@ -1,3 +1,4 @@
+import operator
 import numpy as np
 import pytest
 import array_api_strict as strict
@@ -47,19 +48,29 @@ def get_arrays(n_arrays, *, dtype='float64', xp=np, seed=None):
 
     return marrays, masked_arrays, entropy
 
-def assert_equal(res, ref, seed):
+
+def assert_comparison(res, ref, seed, comparison, **kwargs):
     ref_mask = np.broadcast_to(ref.mask, ref.data.shape)
     try:
-        np.testing.assert_equal(res.data[~res.mask], ref.data[~ref_mask])
-        np.testing.assert_equal(res.mask, ref_mask)
+        comparison(res.data[~res.mask], ref.data[~ref_mask], **kwargs)
+        comparison(res.mask, ref_mask, **kwargs)
     except AssertionError as e:
         raise AssertionError(seed) from e
+
+
+def assert_equal(res, ref, seed, **kwargs):
+    return assert_comparison(res, ref, seed, np.testing.assert_equal, **kwargs)
+
+
+def assert_allclose(res, ref, seed, **kwargs):
+    return assert_comparison(res, ref, seed, np.testing.assert_allclose, **kwargs)
+
 
 arithmetic_unary = [lambda x: +x, lambda x: -x, abs]
 arithmetic_binary = [lambda x, y: x + y, lambda x, y: x - y, lambda x, y: x * y,
                      lambda x, y: x / y, lambda x, y: x // y, lambda x, y: x % y,
                      lambda x, y: x ** y]
-# array operators
+array_binary = [lambda x, y: x @ y, operator.matmul, operator.__matmul__]
 bitwise_unary = {'bitwise_invert': lambda x: ~x}
 bitwise_binary = {'bitwise_and': lambda x, y: x & y,
                   'bitwise_or': lambda x, y: x | y,
@@ -124,6 +135,24 @@ def test_arithmetic_binary(f, seed=None):
     ref_mask = masked_arrays[0].mask | masked_arrays[1].mask
     ref = np.ma.masked_array(ref_data, mask=ref_mask)
     assert_equal(res, ref, seed)
+
+
+@pytest.mark.parametrize("f", array_binary)
+def test_array_binary(f, seed=None):
+    marrays, masked_arrays, seed = get_arrays(1, seed=seed)
+    if marrays[0].ndim < 2:
+        with pytest.raises(ValueError, match="undefined"):
+            f(marrays[0], marrays[0].mT)
+    else:
+        res = f(marrays[0], marrays[0].mT)
+
+        x = masked_arrays[0].data
+        mask = masked_arrays[0].mask
+        x[mask] = 0
+        data = f(x, x.mT)
+        mask = ~f(~mask, ~mask.mT)
+        ref = np.ma.masked_array(data, mask=mask)
+        assert_allclose(res, ref, seed)
 
 
 @pytest.mark.parametrize("dtype", dtypes_integral + dtypes_boolean)
@@ -296,6 +325,11 @@ def test_statistical_array(f_name, keepdims, xp=np, dtype='float64', seed=None):
     ref = np.ma.masked_array(ref.data, getattr(ref, 'mask', False))
     assert_equal(res, ref, seed)
 
+# Use Array API tests to test the following:
+# Creation Functions (same behavior but with all-False mask)
+# Data Type Functions (same behavior; use `data` array as needed)
+# Indexing (same behavior as indexing data and mask separately)
+# Manipulation functions (apply to data and mask separately)
 
 def test_test():
     seed = 8377009968503871097350278305436713931
