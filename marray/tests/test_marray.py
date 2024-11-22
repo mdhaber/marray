@@ -132,26 +132,24 @@ inplace_bitwise = [iand, ior, ixor, ilshift, irshift]
 
 
 elementwise_unary = ['abs', 'acos', 'acosh', 'asin', 'asinh', 'atan', 'atanh',
-                     'ceil', 'cos', 'cosh', 'exp', 'expm1',
-                     'floor', 'isfinite', 'isinf', 'isnan', 'log', 'log1p',
-                     'log2', 'log10', 'logical_not', 'negative', 'positive',
-                     'sign', 'signbit', 'sin', 'sinh', 'square', 'sqrt', 'tan',
-                     'tanh', 'trunc']
+                     'ceil', 'cos', 'cosh', 'exp', 'expm1', 'floor', 'isfinite',
+                     'isinf', 'isnan', 'log', 'log1p', 'log2', 'log10',
+                     'logical_not', 'negative', 'positive', 'round', 'sign',
+                     'signbit', 'sin', 'sinh', 'square', 'sqrt', 'tan', 'tanh',
+                     'trunc']
+elementwise_unary_complex = ['real', 'imag', 'conj']
 elementwise_binary = ['add', 'atan2', 'copysign', 'divide', 'equal', 'floor_divide',
                       'greater', 'greater_equal', 'hypot', 'less', 'less_equal',
                       'logaddexp', 'logical_and', 'logical_or', 'logical_xor',
-                      'maximum', 'minimum', 'multiply', 'not_equal', 'pow', 'subtract']
+                      'maximum', 'minimum', 'multiply', 'not_equal', 'pow',
+                      'remainder', 'subtract']
 statistical_array = ['cumulative_sum', 'max', 'mean',
                      'min', 'prod', 'std', 'sum', 'var']
 
-"""
-'clip'
-'conj'
-'real'
-"""
 
 @pytest.mark.parametrize("f", arithmetic_unary + arithmetic_methods_unary)
-def test_arithmetic_unary(f, seed=None):
+@pytest.mark.parametrize('dtype', dtypes_real)
+def test_arithmetic_unary(f, dtype, seed=None):
     marrays, masked_arrays, seed = get_arrays(1, seed=seed)
     res = f(marrays[0])
     ref = f(masked_arrays[0])
@@ -365,6 +363,12 @@ def test_elementwise_unary(f_name, xp=np, dtype='float64', seed=None):
     assert_equal(res, ref, seed)
 
 
+@pytest.mark.parametrize("f_name", elementwise_unary_complex)
+@pytest.mark.parametrize('dtype', dtypes_complex)
+def test_elementwise_unary_complex(f_name, dtype, seed=None):
+    test_elementwise_unary(f_name, dtype=dtype, seed=seed)
+
+
 @pytest.mark.parametrize("f_name", elementwise_binary)
 def test_elementwise_binary(f_name, xp=np, dtype='float64', seed=None):
     mxp = marray.masked_array(xp)
@@ -401,6 +405,7 @@ def test_statistical_array(f_name, keepdims, xp=np, dtype='float64', seed=None):
 # Use Array API tests to test the following:
 # Creation Functions (same behavior but with all-False mask)
 # Data Type Functions (same behavior; use `data` array as needed)
+# Elementwise function `clip` (all others are tested above)
 # Indexing (same behavior as indexing data and mask separately)
 # Manipulation functions (apply to data and mask separately)
 
