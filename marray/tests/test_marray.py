@@ -1,12 +1,13 @@
 import numpy as np
 import pytest
-
+import array_api_strict as strict
 import marray
 
 dtypes_boolean = ['bool']
 dtypes_integral = ['uint8', 'uint16', 'uint32', 'uint64', 'int8', 'int16', 'int32', 'int64']
 dtypes_real = ['float32', 'float64']
 dtypes_complex = ['complex64', 'complex128']
+dtypes_all = dtypes_boolean + dtypes_integral + dtypes_real + dtypes_complex
 
 
 def get_arrays(n_arrays, *, dtype='float64', xp=np, seed=None):
@@ -59,9 +60,12 @@ arithmetic_binary = [lambda x, y: x + y, lambda x, y: x - y, lambda x, y: x * y,
                      lambda x, y: x / y, lambda x, y: x // y, lambda x, y: x % y,
                      lambda x, y: x ** y]
 # array operators
-bitwise_unary = [lambda x: ~x]
-bitwise_binary = [lambda x, y: x & y, lambda x, y: x | y, lambda x, y: x ^ y,
-                  lambda x, y: x << y, lambda x, y: x >> y]
+bitwise_unary = {'bitwise_invert': lambda x: ~x}
+bitwise_binary = {'bitwise_and': lambda x, y: x & y,
+                  'bitwise_or': lambda x, y: x | y,
+                  'bitwise_xor': lambda x, y: x ^ y,
+                  'bitwise_left_shift': lambda x, y: x << y,
+                  'bitwise_right_shift': lambda x, y: x >> y}
 comparison_binary = [lambda x, y: x < y, lambda x, y: x <= y, lambda x, y: x > y,
                      lambda x, y: x >= y, lambda x, y: x == y , lambda x, y: x != y]
 
@@ -99,16 +103,6 @@ statistical_array = ['cumulative_sum', 'max', 'mean',
                      'min', 'prod', 'std', 'sum', 'var']
 
 """
-'bitwise_invert'
-'bitwise_and'
-'bitwise_left_shift'
-'bitwise_or'
-'bitwise_right_shift'
-'bitwise_xor'
-
-'logical_and'
-'logical_not'
-
 'clip'
 'conj'
 'real'
@@ -133,20 +127,34 @@ def test_arithmetic_binary(f, seed=None):
 
 
 @pytest.mark.parametrize("dtype", dtypes_integral + dtypes_boolean)
-@pytest.mark.parametrize("f", bitwise_unary)
-def test_bitwise_unary(f, dtype, seed=None):
+@pytest.mark.parametrize("f_name_fun", bitwise_unary.items())
+def test_bitwise_unary(f_name_fun, dtype, xp=np, seed=None):
+    f_name, f = f_name_fun
+    mxp = marray.masked_array(xp)
     marrays, masked_arrays, seed = get_arrays(1, dtype=dtype, seed=seed)
+
     res = f(~marrays[0])
     ref = f(~masked_arrays[0])
     assert_equal(res, ref, seed)
 
+    f = getattr(mxp, f_name)
+    res = f(~marrays[0])
+    assert_equal(res, ref, seed)
+
 
 @pytest.mark.parametrize("dtype", dtypes_integral + dtypes_boolean)
-@pytest.mark.parametrize("f", bitwise_binary)
-def test_bitwise_binary(f, dtype, seed=None):
+@pytest.mark.parametrize("f_name_fun", bitwise_binary.items())
+def test_bitwise_binary(f_name_fun, dtype, xp=np, seed=None):
+    f_name, f = f_name_fun
+    mxp = marray.masked_array(xp)
     marrays, masked_arrays, seed = get_arrays(2, dtype=dtype, seed=seed)
+
     res = f(marrays[0], marrays[1])
     ref = f(masked_arrays[0], masked_arrays[1])
+    assert_equal(res, ref, seed)
+
+    f = getattr(mxp, f_name)
+    res = f(marrays[0], marrays[1])
     assert_equal(res, ref, seed)
 
 
@@ -184,34 +192,52 @@ def test_inplace(f, dtype, seed=None):
         assert_equal(marrays[0], masked_arrays[0], seed)
 
 
+@pytest.mark.parametrize("dtype", dtypes_real)
 @pytest.mark.parametrize("f", arithmetic_binary)
-def test_rarithmetic_binary(f, seed=None):
-    marrays, masked_arrays, seed = get_arrays(2, seed=seed)
+def test_rarithmetic_binary(f, dtype, seed=None):
+    mxp = marray.masked_array(strict)
+    marrays, masked_arrays, seed = get_arrays(2, dtype=dtype, seed=seed)
+    marrays[0] = mxp.asarray(marrays[0].data, mask=marrays[0].mask)
+    marrays[1] = mxp.asarray(marrays[1].data, mask=marrays[1].mask)
 
-    res = f(marrays[0], marrays[1].data)
+    res = f(marrays[0].data, marrays[1])
     ref_data = f(masked_arrays[0].data, masked_arrays[1].data)
-    ref_mask = np.broadcast_to(masked_arrays[0].mask, ref_data.shape)
+    ref_mask = np.broadcast_to(masked_arrays[1].mask, ref_data.shape)
     ref = np.ma.masked_array(ref_data, mask=ref_mask)
     assert_equal(res, ref, seed)
 
     # Check that reflected operator works with Python scalar
     res = f(2, marrays[0])
-    ref = f(2, masked_arrays[0])
+    ref = f(getattr(np, dtype)(2), masked_arrays[0])
     assert_equal(res, ref, seed)
 
 
-@pytest.mark.parametrize("dtype", dtypes_integral + dtypes_boolean)
-@pytest.mark.parametrize("f", bitwise_binary)
+@pytest.mark.parametrize("dtype", dtypes_integral)
+@pytest.mark.parametrize("f", bitwise_binary.values())
 def test_rbitwise_binary(f, dtype, seed=None):
+    mxp = marray.masked_array(strict)
     marrays, masked_arrays, seed = get_arrays(2, dtype=dtype, seed=seed)
+    marrays[0] = mxp.asarray(marrays[0].data, mask=marrays[0].mask)
+    marrays[1] = mxp.asarray(marrays[1].data, mask=marrays[1].mask)
 
-    res = f(marrays[0], marrays[1].data)
-    ref = f(masked_arrays[0], masked_arrays[1].data)
+    res = f(marrays[0].data, marrays[1])
+    ref = f(masked_arrays[0].data, masked_arrays[1])
     assert_equal(res, ref, seed)
 
-    res = f(2, marrays[0])
-    ref = f(2, masked_arrays[0])
-    assert_equal(res, ref, seed)
+
+@pytest.mark.parametrize("dtype", dtypes_all)
+def test_attributes(dtype, seed=None, xp=np):
+    marrays, masked_arrays, seed = get_arrays(1, dtype=dtype, seed=seed)
+    assert marrays[0].dtype == marrays[0].data.dtype
+    assert marrays[0].device == marrays[0].data.device == marrays[0].mask.device
+    if marrays[0].ndim >= 2:
+        assert xp.all(marrays[0].mT.data == marrays[0].data.mT)
+        assert xp.all(marrays[0].mT.mask == marrays[0].mask.mT)
+    assert marrays[0].ndim == marrays[0].data.ndim == marrays[0].mask.ndim
+    assert marrays[0].shape == marrays[0].data.shape == marrays[0].mask.shape
+    assert marrays[0].size == marrays[0].data.size == marrays[0].mask.size
+    assert xp.all(marrays[0].T.data == marrays[0].data.T)
+    assert xp.all(marrays[0].T.mask == marrays[0].mask.T)
 
 
 def test_constants(xp=np):
@@ -273,4 +299,4 @@ def test_statistical_array(f_name, keepdims, xp=np, dtype='float64', seed=None):
 
 def test_test():
     seed = 8377009968503871097350278305436713931
-    test_rarithmetic_binary(arithmetic_binary[0], seed=seed)
+    test_rarithmetic_binary(arithmetic_binary[0], 'float32', seed=seed)

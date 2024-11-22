@@ -27,12 +27,14 @@ def masked_array(xp):
     class MaskedArray:
 
         def __init__(self, data, mask=None):
-            data = getattr(data, '_data', data)
-            mask = (xp.zeros(data.shape, dtype=bool) if mask is None
-                    else xp.asarray(mask, dtype=bool))
+            data = xp.asarray(getattr(data, '_data', data))
+            mask = (xp.zeros(data.shape, dtype=xp.bool) if mask is None
+                    else xp.asarray(mask, dtype=xp.bool))
             mask = xp.asarray(xp.broadcast_to(mask, data.shape), copy=True)
             self._data = data
             self._dtype = data.dtype
+            self._device = data.device
+            # assert data.device == mask.device
             self._ndim = data.ndim
             self._shape = data.shape
             self._size = data.size
@@ -49,6 +51,10 @@ def masked_array(xp):
         @property
         def dtype(self):
             return self._dtype
+
+        @property
+        def device(self):
+            return self._device
 
         @property
         def ndim(self):
