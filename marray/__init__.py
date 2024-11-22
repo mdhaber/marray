@@ -171,8 +171,6 @@ def masked_array(xp):
             return self
         setattr(MaskedArray, name, fun)
 
-    # Inherited
-
     # To be added
     # __array_namespace__
     # __dlpack__, __dlpack_device__
@@ -222,7 +220,10 @@ def masked_array(xp):
     dtype_fun_names = ['can_cast', 'finfo', 'iinfo', 'isdtype', 'result_type']
     dtype_names = ['bool', 'int8', 'int16', 'int32', 'int64', 'uint8', 'uint16',
                    'uint32', 'uint64', 'float32', 'float64', 'complex64', 'complex128']
-    for name in dtype_fun_names + dtype_names:
+    inspection_fun_names = ['__array_namespace_info__']
+    version_attribute_names = ['__array_api_version__']
+    for name in (dtype_fun_names + dtype_names + inspection_fun_names
+                 + version_attribute_names):
         setattr(mod, name, getattr(xp, name))
 
     mod.astype = (lambda x, dtype, /, *, copy=True, **kwargs:
@@ -279,13 +280,7 @@ def masked_array(xp):
     mod._xp_take_along_axis = xp_take_along_axis
 
     ## Inspection ##
-    # To be written
-    # __array_namespace_info
-    # capabilities
-    # default_device
-    # default_dtypes
-    # devices
-    # dtypes
+    # Included with dtype functions above
 
     ## Linear Algebra Functions ##
     def get_linalg_fun(name):
@@ -309,6 +304,8 @@ def masked_array(xp):
     linalg_names = ['matmul', 'tensordot', 'vecdot']
     for name in linalg_names:
         setattr(mod, name, get_linalg_fun(name))
+
+    mod.matrix_transpose = lambda x: x.mT
 
     ## Manipulation Functions ##
     first_arg_arrays = {'broadcast_arrays', 'concat', 'stack'}

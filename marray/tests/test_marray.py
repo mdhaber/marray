@@ -131,6 +131,9 @@ def irshift(x, y): x >>= y
 inplace_bitwise = [iand, ior, ixor, ilshift, irshift]
 
 
+data_type = ['can_cast', 'finfo', 'iinfo', 'isdtype']
+inspection = ['__array_namespace_info__']
+version = ['__array_api_version__']
 elementwise_unary = ['abs', 'acos', 'acosh', 'asin', 'asinh', 'atan', 'atanh',
                      'ceil', 'cos', 'cosh', 'exp', 'expm1', 'floor', 'isfinite',
                      'isinf', 'isnan', 'log', 'log1p', 'log2', 'log10',
@@ -143,8 +146,10 @@ elementwise_binary = ['add', 'atan2', 'copysign', 'divide', 'equal', 'floor_divi
                       'logaddexp', 'logical_and', 'logical_or', 'logical_xor',
                       'maximum', 'minimum', 'multiply', 'not_equal', 'pow',
                       'remainder', 'subtract']
+searching_array = ['argmax', 'argmin']
 statistical_array = ['cumulative_sum', 'max', 'mean',
                      'min', 'prod', 'std', 'sum', 'var']
+utility_array = ['all', 'any']
 
 
 @pytest.mark.parametrize("f", arithmetic_unary + arithmetic_methods_unary)
@@ -342,6 +347,12 @@ def test_constants(xp=np):
     assert mxp.pi == xp.pi
 
 
+@pytest.mark.parametrize("f", data_type + inspection + version)
+def test_dtype_funcs_inspection(f, xp=strict):
+    mxp = marray.masked_array(xp)
+    getattr(mxp, f) is getattr(xp, f)
+
+
 @pytest.mark.parametrize("dtype", dtypes_all)
 def test_dtypes(dtype, xp=strict):
     # NumPy fails... unclear whether xp.bool must be a "dtype"
@@ -383,7 +394,7 @@ def test_elementwise_binary(f_name, xp=np, dtype='float64', seed=None):
 
 
 @pytest.mark.parametrize("keepdims", [False, True])
-@pytest.mark.parametrize("f_name", statistical_array)
+@pytest.mark.parametrize("f_name", statistical_array + utility_array)
 def test_statistical_array(f_name, keepdims, xp=np, dtype='float64', seed=None):
     # TODO: confirm that result should never have mask? Only when all are masked?
     mxp = marray.masked_array(xp)
@@ -402,12 +413,19 @@ def test_statistical_array(f_name, keepdims, xp=np, dtype='float64', seed=None):
     ref = np.ma.masked_array(ref.data, getattr(ref, 'mask', False))
     assert_equal(res, ref, seed)
 
+# Test Linear Algebra functions
+
 # Use Array API tests to test the following:
 # Creation Functions (same behavior but with all-False mask)
-# Data Type Functions (same behavior; use `data` array as needed)
+# Data Type Functions (only `astype` remains to be tested)
 # Elementwise function `clip` (all others are tested above)
 # Indexing (same behavior as indexing data and mask separately)
 # Manipulation functions (apply to data and mask separately)
+
+#?
+# Searching functions - finish testing argmin/argmax with above
+# Set functions
+# Sorting functions
 
 def test_test():
     seed = 8377009968503871097350278305436713931
