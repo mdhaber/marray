@@ -413,6 +413,49 @@ def test_statistical_array(f_name, keepdims, xp=np, dtype='float64', seed=None):
     ref = np.ma.masked_array(ref.data, getattr(ref, 'mask', False))
     assert_equal(res, ref, seed)
 
+
+@pytest.mark.parametrize("side", ['left', 'right'])
+@pytest.mark.parametrize("sorted", [True])
+def test_searchsorted(side, sorted, xp=strict, seed=None):
+    mxp = marray.masked_array(xp)
+
+    rng = np.random.default_rng(seed)
+    n = 20
+    x = rng.integers(10, size=n)
+    x_mask = rng.random(size=n) > 0.75
+    y = rng.integers(-2, 12, size=10)
+    y_mask = rng.random(size=10) > 0.5
+
+    if sorted:
+        x = mxp.sort(x)
+
+    x = mxp.asarray(x, mask=x_mask)
+    y = mxp.asarray(y, mask=y_mask)
+
+    kwargs = {'side': side} if sorted else {'side': side, 'sorter': mxp.argsort(x)}
+    out = mxp.searchsorted(x, y, **kwargs)
+
+    for j in out.size:
+        i = out[j]
+        if i.mask:
+            assert y.mask[j]
+            continue
+
+        v = y[j]
+        if side == 'left':
+            if v == 0:
+                assert mxp.all(v <= x)
+            else:
+                assert mxp.all((x[i-1] < v) & (v <= x[i]))
+        else:
+            if v == n:
+                assert mxp.all(x <= v)
+            else:
+                assert mxp.all((x[i-1] <= v) & (v < x[i]))
+
+
+
+
 # Test Linear Algebra functions
 
 # Use Array API tests to test the following:
