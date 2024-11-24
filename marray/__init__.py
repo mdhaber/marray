@@ -27,12 +27,14 @@ def masked_array(xp):
     class MaskedArray:
 
         def __init__(self, data, mask=None):
-            data = getattr(data, '_data', data)
-            mask = (xp.zeros(data.shape, dtype=bool) if mask is None
-                    else xp.asarray(mask, dtype=bool))
+            data = xp.asarray(getattr(data, '_data', data))
+            mask = (xp.zeros(data.shape, dtype=xp.bool) if mask is None
+                    else xp.asarray(mask, dtype=xp.bool))
             mask = xp.asarray(xp.broadcast_to(mask, data.shape), copy=True)
             self._data = data
             self._dtype = data.dtype
+            self._device = data.device
+            # assert data.device == mask.device
             self._ndim = data.ndim
             self._shape = data.shape
             self._size = data.size
@@ -41,6 +43,7 @@ def masked_array(xp):
             self._xp = xp
             self._sentinel = (info(self).max if not xp.isdtype(self.dtype, 'bool')
                               else None)
+            self.__array_namespace__ = mod
 
         @property
         def data(self):
@@ -49,6 +52,10 @@ def masked_array(xp):
         @property
         def dtype(self):
             return self._dtype
+
+        @property
+        def device(self):
+            return self._device
 
         @property
         def ndim(self):
@@ -104,8 +111,15 @@ def masked_array(xp):
         def __matmul__(self, other):
             return mod.matmul(self, other)
 
+        def __imatmul__(self, other):
+            res = mod.matmul(self, other)
+            self.data[...] = res.data[...]
+            self.mask[...] = res.mask[...]
+            return
+
         def __rmatmul__(self, other):
-            return mod.matmul(self, other)
+            other = MaskedArray(other)
+            return mod.matmul(other, self)
 
         ## Attributes ##
 
@@ -143,8 +157,7 @@ def masked_array(xp):
     # Methods that return the result of an elementwise binary operation (reflected)
     rbinary_names = ['__radd__', '__rand__', '__rdivmod__', '__rfloordiv__',
                      '__rlshift__', '__rmod__', '__rmul__', '__ror__', '__rpow__',
-                     '__rrshift__', '__rshift__', '__rsub__', '__rtruediv__',
-                     '__rxor__']
+                     '__rrshift__', '__rsub__', '__rtruediv__', '__rxor__']
     for name in binary_names + rbinary_names:
         def fun(self, other, name=name):
             mask = (self.mask | other.mask) if hasattr(other, 'mask') else self.mask
@@ -165,10 +178,7 @@ def masked_array(xp):
             return self
         setattr(MaskedArray, name, fun)
 
-    # Inherited
-
     # To be added
-    # __array_namespace__
     # __dlpack__, __dlpack_device__
     # to_device?
 
@@ -216,7 +226,10 @@ def masked_array(xp):
     dtype_fun_names = ['can_cast', 'finfo', 'iinfo', 'isdtype', 'result_type']
     dtype_names = ['bool', 'int8', 'int16', 'int32', 'int64', 'uint8', 'uint16',
                    'uint32', 'uint64', 'float32', 'float64', 'complex64', 'complex128']
-    for name in dtype_fun_names + dtype_names:
+    inspection_fun_names = ['__array_namespace_info__']
+    version_attribute_names = ['__array_api_version__']
+    for name in (dtype_fun_names + dtype_names + inspection_fun_names
+                 + version_attribute_names):
         setattr(mod, name, getattr(xp, name))
 
     mod.astype = (lambda x, dtype, /, *, copy=True, **kwargs:
@@ -273,13 +286,7 @@ def masked_array(xp):
     mod._xp_take_along_axis = xp_take_along_axis
 
     ## Inspection ##
-    # To be written
-    # __array_namespace_info
-    # capabilities
-    # default_device
-    # default_dtypes
-    # devices
-    # dtypes
+    # Included with dtype functions above
 
     ## Linear Algebra Functions ##
     def get_linalg_fun(name):
@@ -292,13 +299,19 @@ def masked_array(xp):
             data2[x2.mask] = 0
             fun = getattr(xp, name)
             data = fun(data1, data2)
-            mask = ~fun(~x1.mask, ~x2.mask)
+            # Strict array can't do arithmetic with booleans
+            # mask = ~fun(~x1.mask, ~x2.mask)
+            mask = fun(xp.astype(~x1.mask, xp.uint64),
+                       xp.astype(~x2.mask, xp.uint64))
+            mask = ~xp.astype(mask, xp.bool)
             return MaskedArray(data, mask)
         return linalg_fun
 
     linalg_names = ['matmul', 'tensordot', 'vecdot']
     for name in linalg_names:
         setattr(mod, name, get_linalg_fun(name))
+
+    mod.matrix_transpose = lambda x: x.mT
 
     ## Manipulation Functions ##
     first_arg_arrays = {'broadcast_arrays', 'concat', 'stack'}
@@ -419,13 +432,13 @@ def masked_array(xp):
             data[x.mask] = replacements[name]
             fun = getattr(xp, name)
             res = fun(data, *args, axis=axis, **kwargs)
-            mask = xp.all(x.mask, axis=axis)
+            mask = xp.all(x.mask, axis=axis, keepdims=kwargs.get('keepdims', False))
             return MaskedArray(res, mask=mask)
         return statistical_fun
 
     def count(x, axis=None, keepdims=False):
         x = asarray(x)
-        return xp.sum(x.mask, axis=axis, keepdims=keepdims)
+        return xp.sum(~x.mask, axis=axis, keepdims=keepdims)
 
     def cumulative_sum(x, *args, **kwargs):
         x = asarray(x)
