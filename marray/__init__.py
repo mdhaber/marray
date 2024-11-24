@@ -234,7 +234,7 @@ def masked_array(xp):
     elementwise_names = ['abs', 'acos', 'acosh', 'add', 'asin', 'asinh', 'atan',
                          'atan2', 'atanh', 'bitwise_and', 'bitwise_left_shift',
                          'bitwise_invert', 'bitwise_or', 'bitwise_right_shift',
-                         'bitwise_xor', 'ceil', 'clip', 'conj', 'copysign', 'cos',
+                         'bitwise_xor', 'ceil', 'conj', 'copysign', 'cos',
                          'cosh', 'divide', 'equal', 'exp', 'expm1', 'floor',
                          'floor_divide', 'greater', 'greater_equal', 'hypot',
                          'imag', 'isfinite', 'isinf', 'isnan', 'less', 'less_equal',
@@ -252,6 +252,17 @@ def masked_array(xp):
             out = getattr(xp, name)(*args, **kwargs)
             return MaskedArray(out, mask=xp.any(masks, axis=0))
         setattr(mod, name, fun)
+
+
+    def clip(x, /, min=None, max=None):
+        args = [x, min, max]
+        masks = [arg.mask for arg in args if hasattr(arg, 'mask')]
+        masks = xp.broadcast_arrays(*masks)
+        mask = xp.any(masks, axis=0)
+        datas = [getattr(arg, 'data', arg) for arg in args]
+        data = xp.clip(datas[0], min=datas[1], max=datas[2])
+        return MaskedArray(data, mask)
+    mod.clip = clip
 
     ## Indexing Functions
     # To be written:

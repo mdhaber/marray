@@ -417,7 +417,6 @@ def test_statistical_array(f_name, keepdims, xp=np, dtype='float64', seed=None):
 
 # Use Array API tests to test the following:
 # Creation Functions (same behavior but with all-False mask)
-# Elementwise function `clip` (all others are tested above)
 # Indexing (same behavior as indexing data and mask separately)
 # Manipulation functions (apply to data and mask separately)
 
@@ -444,6 +443,14 @@ def test_astype(dtype_in, dtype_out, copy, xp=np, seed=None):
     ref = masked_arrays[0].astype(dtype_out, copy=copy)
     assert_equal(res, ref, seed)
 
+
+@pytest.mark.parametrize('dtype', dtypes_real)
+def test_clip(dtype, xp=np, seed=None):
+    mxp = marray.masked_array(xp)
+    marrays, masked_arrays, seed = get_arrays(3, dtype=dtype, seed=seed)
+    res = mxp.clip(marrays[0], min=marrays[1], max=marrays[2])
+    ref = np.ma.clip(*masked_arrays)
+    assert_equal(res, ref, seed)
 
 #?
 # Searching functions - would test argmin/argmax with statistical functions,
