@@ -30,7 +30,8 @@ def masked_array(xp):
             data = xp.asarray(getattr(data, '_data', data))
             mask = (xp.zeros(data.shape, dtype=xp.bool) if mask is None
                     else xp.asarray(mask, dtype=xp.bool))
-            mask = xp.asarray(xp.broadcast_to(mask, data.shape), copy=True)
+            if mask.shape != data.shape:  # avoid copy if possible
+                mask = xp.asarray(xp.broadcast_to(mask, data.shape), copy=True)
             self._data = data
             self._dtype = data.dtype
             self._device = data.device
@@ -203,7 +204,7 @@ def masked_array(xp):
                 if mask is None else mask)
 
         data = xp.asarray(data, dtype=dtype, device=device, copy=copy)
-        mask = xp.asarray(mask, dtype=dtype, device=device, copy=copy)
+        mask = xp.asarray(mask, dtype=xp.bool, device=device, copy=copy)
         return MaskedArray(data, mask=mask)
     mod.asarray = asarray
 
