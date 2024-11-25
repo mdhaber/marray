@@ -87,18 +87,12 @@ def masked_array(xp):
             return self.data.__setitem__(key, getattr(other, 'data', other))
 
         def _data_mask_string(self, fun):
-            data_str = fun(self.data) + ", "
+            data_str = fun(self.data)
             mask_str = fun(self.mask)
             if len(data_str) + len(mask_str) <= 66:
-                join_char = ""
-                components = ["MaskedArray(", data_str, mask_str, ")"]
+                return f"MaskedArray({data_str}, {mask_str})"
             else:
-                join_char = "\n"
-                components = ["MaskedArray(",
-                              textwrap.indent(data_str, " " * 4),
-                              textwrap.indent(mask_str, " " * 4),
-                              ")"]
-            return join_char.join(components)
+                return f"MaskedArray(\n    {data_str},\n    {mask_str}\n)"
 
         ## Visualization ##
         def __repr__(self):
@@ -193,6 +187,8 @@ def masked_array(xp):
         pass
 
     mod = module()
+
+    mod.MaskedArray = MaskedArray
 
     ## Constants ##
     constant_names = ['e', 'inf', 'nan', 'newaxis', 'pi']
