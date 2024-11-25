@@ -4,7 +4,6 @@ Masked versions of array API compatible arrays
 
 __version__ = "0.0.4"
 
-import textwrap
 
 
 def masked_array(xp):
