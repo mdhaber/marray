@@ -4,6 +4,7 @@ Masked versions of array API compatible arrays
 
 __version__ = "0.0.4"
 
+import types, sys
 import numpy as np  # temporarily used in __repr__ and __str__
 
 
@@ -183,10 +184,8 @@ def masked_array(xp):
         else:
             return xp.finfo(x.dtype)
 
-    class module:
-        pass
-
-    mod = module()
+    mod = types.ModuleType('mxp')
+    sys.modules['mxp'] = mod
 
     ## Constants ##
     constant_names = ['e', 'inf', 'nan', 'newaxis', 'pi']

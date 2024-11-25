@@ -429,6 +429,13 @@ def test_statistical_array(f_name, keepdims, xp=np, dtype='float64', seed=None):
 # Sorting functions
 # __array_namespace__
 
+
+def test_import(xp=np):
+    mxp = marray.masked_array(xp)
+    from mxp import asarray
+    asarray(10, mask=True)
+
+
 def test_test():
     seed = 149020664425889521094089537542803361848
     # test_statistical_array('argmin', True, seed=seed)
