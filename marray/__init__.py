@@ -125,6 +125,19 @@ def masked_array(xp):
         def mT(self):
             return MaskedArray(self.data.mT, self.mask.mT)
 
+        # dlpack
+        def __dlpack_device__(self):
+            return self.data.__dlpack_device__()
+
+        def __dlpack__(self):
+            # really not sure how to define this
+            return self.data.__dlpack__()
+
+        def to_device(self, device, /, *, stream=None):
+            self._data = self._data.to_device(device, stream=stream)
+            self._mask = self._mask.to_device(device, stream=stream)
+
+
     ## Methods ##
 
     # Methods that return the result of a unary operation as an array
@@ -171,10 +184,6 @@ def masked_array(xp):
             self.call_super_method(name, other)
             return self
         setattr(MaskedArray, name, fun)
-
-    # To be added
-    # __dlpack__, __dlpack_device__
-    # to_device?
 
     def info(x):
         xp = x._xp

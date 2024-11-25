@@ -97,7 +97,7 @@ bitwise_methods_binary = {'bitwise_and': lambda x, y: x.__and__(y),
 scalar_conversions = {bool: True, int: 10, float: 1.5, complex: 1.5 + 2.5j}
 
 # tested in test_dlpack
-# __dlpack__, __dlpack_device__, __to_device__
+# __dlpack__, __dlpack_device__, to_device
 # tested in test_indexing
 # __getitem__, __index__, __setitem__,
 
@@ -261,8 +261,14 @@ def test_indexing(xp=strict):
     assert x[2].mask == True
 
 
-# tested in test_dlpack
-# __dlpack__, __dlpack_device__, __to_device__
+def test_dlpack(xp=strict, seed=None):
+    # This is a placeholder for a real test when there is a real implementation
+    mxp = marray.masked_array(xp)
+    marrays, _, seed = get_arrays(1, seed=seed)
+    assert isinstance(marrays[0].__dlpack__(), type(marrays[0].data.__dlpack__()))
+    assert marrays[0].__dlpack_device__() == marrays[0].data.__dlpack_device__()
+    marrays[0].to_device('cpu')
+
 
 @pytest.mark.parametrize("dtype", dtypes_integral + dtypes_real)
 @pytest.mark.parametrize("f", comparison_binary + comparison_methods_binary)
