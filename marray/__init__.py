@@ -199,11 +199,12 @@ def masked_array(xp):
             raise NotImplementedError()
 
         data = getattr(obj, 'data', obj)
+        data = xp.asarray(data, dtype=dtype, device=device, copy=copy)
+
         mask = (getattr(obj, 'mask', xp.full(data.shape, False))
                 if mask is None else mask)
-
-        data = xp.asarray(data, dtype=dtype, device=device, copy=copy)
         mask = xp.asarray(mask, dtype=dtype, device=device, copy=copy)
+
         return MaskedArray(data, mask=mask)
     mod.asarray = asarray
 

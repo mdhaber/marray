@@ -13,13 +13,13 @@ dtypes_complex = ['complex64', 'complex128']
 dtypes_all = dtypes_boolean + dtypes_integral + dtypes_real + dtypes_complex
 
 
-def get_arrays(n_arrays, *, dtype='float64', xp=np, seed=None):
+def get_arrays(n_arrays, *, ndim=(1, 4), dtype='float64', xp=np, seed=None):
     xpm = marray.masked_array(xp)
 
     entropy = np.random.SeedSequence(seed).entropy
     rng = np.random.default_rng(entropy)
 
-    ndim = rng.integers(1, 4)
+    ndim = rng.integers(*ndim) if isinstance(ndim, tuple) else ndim
     shape = rng.integers(1, 20, size=ndim)
 
     datas = []
@@ -93,17 +93,13 @@ bitwise_methods_binary = {'bitwise_and': lambda x, y: x.__and__(y),
                           'bitwise_right_shift': lambda x, y: x.__rshift__(y),
                           'bitwise_xor': lambda x, y: x.__xor__(y)}
 
-# __array_namespace__
-# __bool__
-# __complex__
-# __dlpack__
-# __dlpack_device__
-# __float__
-# __getitem__
-# __index__
-# __int__
-# __setitem__
-# __to_device__
+
+scalar_conversions = {bool: True, int: 10, float: 1.5, complex: 1.5 + 2.5j}
+
+# tested in test_dlpack
+# __dlpack__, __dlpack_device__, __to_device__
+# tested in test_indexing
+# __getitem__, __index__, __setitem__,
 
 comparison_binary = [lambda x, y: x < y, lambda x, y: x <= y, lambda x, y: x > y,
                      lambda x, y: x >= y, lambda x, y: x == y , lambda x, y: x != y]
@@ -222,6 +218,51 @@ def test_bitwise_binary(f_name_fun, dtype, xp=np, seed=None):
     res = f(marrays[0], marrays[1])
     assert_equal(res, ref, seed)
 
+
+@pytest.mark.parametrize('type_val', scalar_conversions.items())
+@pytest.mark.parametrize('mask', [False, True])
+def test_scalar_conversion(type_val, mask, xp=np):
+    mxp = marray.masked_array(xp)
+    type, val = type_val
+    x = mxp.asarray(val)
+    assert type(x) == val
+    assert isinstance(type(x), type)
+
+    method = getattr(x, f"__{type.__name__}__")
+    assert method() == val
+    assert isinstance(method(), type)
+
+
+def test_indexing(xp=strict):
+    # The implementations of `__getitem__` and `__setitem__` are trivial.
+    # This does not make them easy to test exhaustively, but it does make
+    # them easy to fix if a shortcoming is identified. Include a very basic
+    # test for now, and improve as needed.
+    mxp = marray.masked_array(xp)
+    x = mxp.asarray(xp.arange(3), mask=[False, True, False])
+
+    # Test `__setitem__`/`__getitem__` roundtrip
+    x[1] = 10
+    assert x[1] == 10
+    assert isinstance(x[1], type(x))
+
+    # Test `__setitem__`/`__getitem__` roundtrip with masked array as index
+    i = mxp.asarray(1, mask=True)
+    x[i.__index__()] = 20
+    assert x[i.__index__()] == 20
+    assert isinstance(x[i.__index__()], type(x))
+
+    # `__setitem__` can change mask
+    x[1] = mxp.asarray(30, mask=False)
+    assert x[1].data == 30
+    assert x[1].mask == False
+    x[2] = mxp.asarray(40, mask=True)
+    assert x[2].data == 40
+    assert x[2].mask == True
+
+
+# tested in test_dlpack
+# __dlpack__, __dlpack_device__, __to_device__
 
 @pytest.mark.parametrize("dtype", dtypes_integral + dtypes_real)
 @pytest.mark.parametrize("f", comparison_binary + comparison_methods_binary)
