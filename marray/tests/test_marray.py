@@ -415,8 +415,7 @@ def test_statistical_array(f_name, keepdims, xp=np, dtype='float64', seed=None):
 
 
 @pytest.mark.parametrize("side", ['left', 'right'])
-@pytest.mark.parametrize("sorted", [True])
-def test_searchsorted(side, sorted, xp=strict, seed=None):
+def test_searchsorted(side, xp=strict, seed=None):
     mxp = marray.masked_array(xp)
 
     rng = np.random.default_rng(seed)
@@ -428,17 +427,24 @@ def test_searchsorted(side, sorted, xp=strict, seed=None):
     x2 = rng.integers(-2, 12, size=m)
     x2_mask = rng.random(size=m) > 0.5
 
-    if sorted:
-        x1 = np.sort(x1)
-
     x1 = mxp.asarray(x1, mask=x1_mask)
     x2 = mxp.asarray(x2, mask=x2_mask)
 
-    kwargs = {'side': side} if sorted else {'side': side, 'sorter': mxp.argsort(x1)}
-    out = mxp.searchsorted(x1, x2, **kwargs)
+    # Note that the output of `searchsorted` is the same whether
+    # a (valid) `sorter` is provided or the array is sorted to begin with
+    res = xp.searchsorted(x1.data, x2.data, side=side, sorter=xp.argsort(x1.data))
+    ref = xp.searchsorted(xp.sort(x1.data), x2.data, side=side, sorter=None)
+    assert xp.all(res == ref)
 
-    for j in range(out.size):
-        i = out[j]
+    # This is true for `marray`, too
+    res = mxp.searchsorted(x1, x2, side=side, sorter=mxp.argsort(x1))
+    x1 = mxp.sort(x1)
+    ref = mxp.searchsorted(x1, x2, side=side, sorter=None)
+    assert mxp.all(res == ref)
+
+    # And the output satisfies the required properties:
+    for j in range(res.size):
+        i = res[j]
 
         if i.mask:
             assert x2.mask[j]
