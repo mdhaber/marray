@@ -429,9 +429,6 @@ def test_astype(dtype_in, dtype_out, copy, xp=np, seed=None):
     mxp = marray.masked_array(xp)
     marrays, masked_arrays, seed = get_arrays(1, dtype=dtype_in, seed=seed)
 
-    if dtype_in != dtype_out and not copy:
-        pytest.mark.skip("Can't change type without copy.")
-
     res = mxp.astype(marrays[0], dtype_out, copy=copy)
     if dtype_in == dtype_out:
         if copy:
