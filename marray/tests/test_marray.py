@@ -421,39 +421,35 @@ def test_searchsorted(side, sorted, xp=strict, seed=None):
 
     rng = np.random.default_rng(seed)
     n = 20
-    x = rng.integers(10, size=n)
-    x_mask = rng.random(size=n) > 0.75
-    y = rng.integers(-2, 12, size=10)
-    y_mask = rng.random(size=10) > 0.5
+    m = 10
+
+    x1 = rng.integers(10, size=n)
+    x1_mask = (rng.random(size=n) > 0.5)
+    x2 = rng.integers(-2, 12, size=m)
+    x2_mask = rng.random(size=m) > 0.5
 
     if sorted:
-        x = mxp.sort(x)
+        x1 = np.sort(x1)
 
-    x = mxp.asarray(x, mask=x_mask)
-    y = mxp.asarray(y, mask=y_mask)
+    x1 = mxp.asarray(x1, mask=x1_mask)
+    x2 = mxp.asarray(x2, mask=x2_mask)
 
-    kwargs = {'side': side} if sorted else {'side': side, 'sorter': mxp.argsort(x)}
-    out = mxp.searchsorted(x, y, **kwargs)
+    kwargs = {'side': side} if sorted else {'side': side, 'sorter': mxp.argsort(x1)}
+    out = mxp.searchsorted(x1, x2, **kwargs)
 
-    for j in out.size:
+    for j in range(out.size):
         i = out[j]
+
         if i.mask:
-            assert y.mask[j]
+            assert x2.mask[j]
             continue
 
-        v = y[j]
+        i = i.__index__()
+        v = x2[j]
         if side == 'left':
-            if v == 0:
-                assert mxp.all(v <= x)
-            else:
-                assert mxp.all((x[i-1] < v) & (v <= x[i]))
+            assert mxp.all(x1[:i] < v) and mxp.all(v <= x1[i:])
         else:
-            if v == n:
-                assert mxp.all(x <= v)
-            else:
-                assert mxp.all((x[i-1] <= v) & (v < x[i]))
-
-
+            assert mxp.all(x1[:i] <= v) and mxp.all(v < x1[i:])
 
 
 # Test Linear Algebra functions

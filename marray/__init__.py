@@ -4,6 +4,7 @@ Masked versions of array API compatible arrays
 
 __version__ = "0.0.4"
 
+import dataclasses
 import numpy as np  # temporarily used in __repr__ and __str__
 
 
@@ -180,6 +181,9 @@ def masked_array(xp):
         xp = x._xp
         if xp.isdtype(x.dtype, 'integral'):
             return xp.iinfo(x.dtype)
+        elif xp.isdtype(x.dtype, 'bool'):
+            binfo = dataclasses.make_dataclass("binfo", ['min', 'max'])
+            return binfo(min=False, max=True)
         else:
             return xp.finfo(x.dtype)
 
@@ -254,9 +258,12 @@ def masked_array(xp):
 
     ## Indexing Functions
     def take(x, indices, /, *, axis=None):
-        data = xp.take(x.data, indices.data, axis=axis)
-        mask = xp.take(x.mask, indices.data, axis=axis) + indices.mask
+        indices_data = getattr(indices, 'data', indices)
+        indices_mask = getattr(indices, 'mask', False)
+        data = xp.take(x.data, indices_data, axis=axis)
+        mask = xp.take(x.mask, indices_data, axis=axis) | indices_mask
         return MaskedArray(data, mask=mask)
+    mod.take = take
 
     def xp_take_along_axis(arr, indices, axis):
         # This is just for regular arrays; not masked arrays
