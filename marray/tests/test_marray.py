@@ -426,8 +426,40 @@ def test_statistical_array(f_name, keepdims, xp=np, dtype='float64', seed=None):
 # Searching functions - would test argmin/argmax with statistical functions,
 #                       but NumPy masked version isn't correct
 # Set functions
-# Sorting functions
 # __array_namespace__
+
+
+@pytest.mark.parametrize("f_name", ['sort', 'argsort'])
+@pytest.mark.parametrize("descending", [False, True])
+@pytest.mark.parametrize("stable", [False])  # NumPy masked arrays don't support True
+@pytest.mark.parametrize('dtype', dtypes_real)
+def test_sorting(f_name, descending, stable, dtype, xp=strict, seed=None):
+    mxp = marray.masked_array(xp)
+    marrays, masked_arrays, seed = get_arrays(1, dtype=dtype, seed=seed)
+    f_mxp = getattr(mxp, f_name)
+    f_xp = getattr(np.ma, f_name)
+    res = f_mxp(marrays[0], axis=-1, descending=descending, stable=stable)
+    if descending:
+        ref = f_xp(-masked_arrays[0], axis=-1, stable=stable)
+        ref = -ref if f_name=='sort' else ref
+    else:
+        ref = f_xp(masked_arrays[0], axis=-1, stable=stable)
+
+    if f_name == 'sort':
+        assert_equal(res, np.ma.masked_array(ref), seed)
+    else:
+        # We can't just compare the indices because sometimes `np.ma.argsort`
+        # doesn't sort the masked elements the same way. Instead, we use the
+        # indices to sort the arrays, then compare the sorted masked arrays.
+        # (The difference is that we don't compare the masked values.)
+        i_sorted = np.asarray(res.data)
+        res_data = np.take_along_axis(marrays[0].data, i_sorted, axis=-1)
+        res_mask = np.take_along_axis(marrays[0].mask, i_sorted, axis=-1)
+        res = mxp.asarray(res_data, mask=res_mask)
+        ref_data = np.take_along_axis(masked_arrays[0].data, ref, axis=-1)
+        ref_mask = np.take_along_axis(masked_arrays[0].mask, ref, axis=-1)
+        ref = np.ma.MaskedArray(ref_data, mask=ref_mask)
+        assert_equal(res, ref, seed)
 
 def test_test():
     seed = 149020664425889521094089537542803361848
