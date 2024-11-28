@@ -95,6 +95,15 @@ def pass_exceptions(allowed=[]):
     return outer
 
 
+def get_rtol(dtype, xp):
+    if isinstance(dtype, str):
+        dtype = getattr(xp, dtype)
+    if xp.isdtype(dtype, ('real floating', 'complex floating')):
+        return xp.finfo(dtype).eps**0.5
+    else:
+        return 0
+
+
 arithmetic_unary = [lambda x: +x, lambda x: -x, abs]
 arithmetic_methods_unary = [lambda x: x.__abs__(), lambda x: x.__neg__(),
                             lambda x: x.__pos__()]
@@ -225,7 +234,7 @@ def test_array_binary(f, dtype, xp, seed=None):
     data = f(x, x.mT)
     mask = ~f(~mask, ~mask.mT)
     ref = np.ma.masked_array(data, mask=mask)
-    assert_allclose(res, ref, seed=seed, xp=xp)
+    assert_allclose(res, ref, seed=seed, xp=xp, rtol=get_rtol(dtype, xp))
 
 
 @pytest.mark.parametrize("dtype", dtypes_integral + dtypes_boolean)
