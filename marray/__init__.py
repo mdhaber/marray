@@ -5,6 +5,7 @@ Masked versions of array API compatible arrays
 __version__ = "0.0.4"
 
 import numpy as np  # temporarily used in __repr__ and __str__
+from . import formatting
 
 
 def masked_array(xp):
@@ -88,18 +89,18 @@ def masked_array(xp):
 
         ## Visualization ##
         def __repr__(self):
-            # temporary: fix for CuPy
-            # eventually: rewrite to avoid masked array
-            data = np.asarray(self.data)
-            mask = np.asarray(self.mask)
-            return np.ma.masked_array(data, mask).__repr__()
+            return formatting.format_repr(self)
+
+        def _repr_inline_(self):
+            fill_value = self._sentinel
+
+            wrapped_cls = type(self.data)
+            wrapped_cls_name = wrapped_cls.__module__ + "." + wrapped_cls.__name__
+
+            return f"<marray.MaskedArray(fill_value={fill_value}, wrapped={wrapped_cls_name})>"
 
         def __str__(self):
-            # temporary: fix for CuPy
-            # eventually: rewrite to avoid masked array
-            data = np.asarray(self.data)
-            mask = np.asarray(self.mask)
-            return np.ma.masked_array(data, mask).__str__()
+            return formatting.format_array(self.data, self.mask)
 
         ## Linear Algebra Methods ##
         def __matmul__(self, other):
