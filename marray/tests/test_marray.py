@@ -684,6 +684,13 @@ def test_sorting(f_name, descending, stable, dtype, xp=strict, seed=None):
         ref = np.ma.MaskedArray(ref_data, mask=ref_mask)
         assert_equal(res, ref, seed)
 
+
+def test_import(xp=np):
+    mxp = marray.masked_array(xp)
+    from mxp import asarray
+    asarray(10, mask=True)
+
+
 def test_test():
     seed = 149020664425889521094089537542803361848
     # test_statistical_array('argmin', True, seed=seed)

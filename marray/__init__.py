@@ -4,6 +4,7 @@ Masked versions of array API compatible arrays
 
 __version__ = "0.0.4"
 
+import types, sys
 import dataclasses
 
 def masked_array(xp):
@@ -195,10 +196,8 @@ def masked_array(xp):
         else:
             return xp.finfo(x.dtype)
 
-    class module:
-        pass
-
-    mod = module()
+    mod = types.ModuleType('mxp')
+    sys.modules['mxp'] = mod
 
     mod.MaskedArray = MaskedArray
 
