@@ -4,7 +4,6 @@ Masked versions of array API compatible arrays
 
 __version__ = "0.0.4"
 
-import numpy as np  # temporarily used in __repr__ and __str__
 
 
 def masked_array(xp):
@@ -86,20 +85,20 @@ def masked_array(xp):
             self.mask[key] = getattr(other, 'mask', False)
             return self.data.__setitem__(key, getattr(other, 'data', other))
 
+        def _data_mask_string(self, fun):
+            data_str = fun(self.data)
+            mask_str = fun(self.mask)
+            if len(data_str) + len(mask_str) <= 66:
+                return f"MaskedArray({data_str}, {mask_str})"
+            else:
+                return f"MaskedArray(\n    {data_str},\n    {mask_str}\n)"
+
         ## Visualization ##
         def __repr__(self):
-            # temporary: fix for CuPy
-            # eventually: rewrite to avoid masked array
-            data = np.asarray(self.data)
-            mask = np.asarray(self.mask)
-            return np.ma.masked_array(data, mask).__repr__()
+            return self._data_mask_string(repr)
 
         def __str__(self):
-            # temporary: fix for CuPy
-            # eventually: rewrite to avoid masked array
-            data = np.asarray(self.data)
-            mask = np.asarray(self.mask)
-            return np.ma.masked_array(data, mask).__str__()
+            return self._data_mask_string(str)
 
         ## Linear Algebra Methods ##
         def __matmul__(self, other):
@@ -187,6 +186,8 @@ def masked_array(xp):
         pass
 
     mod = module()
+
+    mod.MaskedArray = MaskedArray
 
     ## Constants ##
     constant_names = ['e', 'inf', 'nan', 'newaxis', 'pi']
