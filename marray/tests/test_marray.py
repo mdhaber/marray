@@ -13,13 +13,13 @@ dtypes_complex = ['complex64', 'complex128']
 dtypes_all = dtypes_boolean + dtypes_integral + dtypes_real + dtypes_complex
 
 
-def get_arrays(n_arrays, *, dtype='float64', xp=np, seed=None):
+def get_arrays(n_arrays, *, ndim=(1, 4), dtype='float64', xp=np, seed=None):
     xpm = marray.masked_array(xp)
 
     entropy = np.random.SeedSequence(seed).entropy
     rng = np.random.default_rng(entropy)
 
-    ndim = rng.integers(1, 4)
+    ndim = rng.integers(*ndim) if isinstance(ndim, tuple) else ndim
     shape = rng.integers(1, 20, size=ndim)
 
     datas = []
@@ -60,7 +60,7 @@ def assert_comparison(res, ref, seed, comparison, **kwargs):
         raise AssertionError(seed) from e
 
 
-def assert_equal(res, ref, seed, **kwargs):
+def assert_equal(res, ref, seed=None, **kwargs):
     return assert_comparison(res, ref, seed, np.testing.assert_equal, **kwargs)
 
 
@@ -146,7 +146,7 @@ elementwise_binary = ['add', 'atan2', 'copysign', 'divide', 'equal', 'floor_divi
                       'logaddexp', 'logical_and', 'logical_or', 'logical_xor',
                       'maximum', 'minimum', 'multiply', 'not_equal', 'pow',
                       'remainder', 'subtract']
-searching_array = ['argmax', 'argmin']  # NumPy masked array funcs not good references
+searching_array = ['argmax', 'argmin']
 statistical_array = ['cumulative_sum', 'max', 'mean',
                      'min', 'prod', 'std', 'sum', 'var']
 utility_array = ['all', 'any']
@@ -394,7 +394,7 @@ def test_elementwise_binary(f_name, xp=np, dtype='float64', seed=None):
 
 
 @pytest.mark.parametrize("keepdims", [False, True])
-@pytest.mark.parametrize("f_name", statistical_array + utility_array)
+@pytest.mark.parametrize("f_name", statistical_array + utility_array + searching_array)
 def test_statistical_array(f_name, keepdims, xp=np, dtype='float64', seed=None):
     # TODO: confirm that result should never have mask? Only when all are masked?
     mxp = marray.masked_array(xp)
@@ -410,8 +410,113 @@ def test_statistical_array(f_name, keepdims, xp=np, dtype='float64', seed=None):
     f2 = getattr(xp, f_name2)
     res = f(marrays[0], axis=axis, **kwargs)
     ref = f2(masked_arrays[0], axis=axis, **kwargs)
-    ref = np.ma.masked_array(ref.data, getattr(ref, 'mask', False))
+    # `argmin`/`argmax` don't calculate mask correctly
+    ref_mask = np.all(masked_arrays[0].mask, axis=axis, **kwargs)
+    ref = np.ma.masked_array(ref.data, getattr(ref, 'mask', ref_mask))
     assert_equal(res, ref, seed)
+
+
+# Test Creation functions
+@pytest.mark.parametrize('f_name, args, kwargs', [
+    # Try to pass options that change output compared to default
+    ('arange', (-1.5, 10, 2), dict(dtype=int)),
+    ('asarray', ([1, 2, 3],), dict(dtype=float, copy=True)),
+    ('empty', ((4, 3, 2),), dict(dtype=int)),
+    ('empty_like', (np.empty((4, 3, 2)),), dict(dtype=int)),
+    ('eye', (10, 11), dict(k=2, dtype=int)),
+    ('full', ((4, 3, 2), 5), dict(dtype=float)),
+    ('full_like', (np.empty((4, 3, 2)), 5.), dict(dtype=int)),
+    ('linspace', (1, 20, 100), dict(dtype=int, endpoint=False)),
+    ('ones', ((4, 3, 2),), dict(dtype=int)),
+    ('ones_like', (np.empty((4, 3, 2)),), dict(dtype=int)),
+    ('zeros', ((4, 3, 2),), dict(dtype=int)),
+    ('zeros_like', (np.empty((4, 3, 2)),), dict(dtype=int)),
+])
+# Should `_like` functions inherit the mask of the argument?
+def test_creation(f_name, args, kwargs, xp=np):
+    mxp = marray.masked_array(xp)
+    f_xp = getattr(xp, f_name)
+    f_mxp = getattr(mxp, f_name)
+    res = f_mxp(*args, **kwargs)
+    ref = f_xp(*args, **kwargs)
+    if f_name.startswith('empty'):
+        assert res.data.shape == ref.shape
+    else:
+        np.testing.assert_equal(res.data, ref, strict=True)
+    np.testing.assert_equal(res.mask, xp.full(ref.shape, False), strict=True)
+
+
+@pytest.mark.parametrize('f_name', ['tril', 'triu'])
+@pytest.mark.parametrize('dtype', dtypes_all)
+def test_tri(f_name, dtype, seed=None, xp=np):
+    mxp = marray.masked_array(xp)
+    f_xp = getattr(xp, f_name)
+    f_mxp = getattr(mxp, f_name)
+    marrays, _, seed = get_arrays(1, ndim=(2, 4), dtype=dtype, seed=seed)
+
+    res = f_mxp(marrays[0], k=1)
+    ref_data = f_xp(marrays[0].data, k=1)
+    ref_mask = f_xp(marrays[0].mask, k=1)
+    ref = np.ma.masked_array(ref_data, mask=ref_mask)
+    assert_equal(res, ref, seed)
+
+
+@pytest.mark.parametrize('indexing', ['ij', 'xy'])
+@pytest.mark.parametrize('dtype', dtypes_all)
+def test_meshgrid(indexing, dtype, seed=None, xp=np):
+    mxp = marray.masked_array(xp)
+    marrays, _, seed = get_arrays(1, ndim=1, dtype=dtype, seed=seed)
+
+    res = mxp.meshgrid(*marrays, indexing=indexing)
+    ref_data = xp.meshgrid([marray.data for marray in marrays], indexing=indexing)
+    ref_mask = xp.meshgrid([marray.mask for marray in marrays], indexing=indexing)
+    ref = [np.ma.masked_array(data, mask=mask) for data, mask in zip(ref_data, ref_mask)]
+    [assert_equal(res_array, ref_array, seed) for res_array, ref_array in zip(res, ref)]
+
+
+@pytest.mark.parametrize("side", ['left', 'right'])
+def test_searchsorted(side, xp=strict, seed=None):
+    mxp = marray.masked_array(xp)
+
+    rng = np.random.default_rng(seed)
+    n = 20
+    m = 10
+
+    x1 = rng.integers(10, size=n)
+    x1_mask = (rng.random(size=n) > 0.5)
+    x2 = rng.integers(-2, 12, size=m)
+    x2_mask = rng.random(size=m) > 0.5
+
+    x1 = mxp.asarray(x1, mask=x1_mask)
+    x2 = mxp.asarray(x2, mask=x2_mask)
+
+    # Note that the output of `searchsorted` is the same whether
+    # a (valid) `sorter` is provided or the array is sorted to begin with
+    res = xp.searchsorted(x1.data, x2.data, side=side, sorter=xp.argsort(x1.data))
+    ref = xp.searchsorted(xp.sort(x1.data), x2.data, side=side, sorter=None)
+    assert xp.all(res == ref)
+
+    # This is true for `marray`, too
+    res = mxp.searchsorted(x1, x2, side=side, sorter=mxp.argsort(x1))
+    x1 = mxp.sort(x1)
+    ref = mxp.searchsorted(x1, x2, side=side, sorter=None)
+    assert mxp.all(res == ref)
+
+    # And the output satisfies the required properties:
+    for j in range(res.size):
+        i = res[j]
+
+        if i.mask:
+            assert x2.mask[j]
+            continue
+
+        i = i.__index__()
+        v = x2[j]
+        if side == 'left':
+            assert mxp.all(x1[:i] < v) and mxp.all(v <= x1[i:])
+        else:
+            assert mxp.all(x1[:i] <= v) and mxp.all(v < x1[i:])
+
 
 # Test Linear Algebra functions
 
@@ -450,8 +555,6 @@ def test_clip(dtype, xp=np, seed=None):
     assert_equal(res, ref, seed)
 
 #?
-# Searching functions - would test argmin/argmax with statistical functions,
-#                       but NumPy masked version isn't correct
 # Set functions
 # Sorting functions
 # __array_namespace__
