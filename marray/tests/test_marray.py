@@ -54,8 +54,8 @@ def get_arrays(n_arrays, *, ndim=(1, 4), dtype='float64', xp=np, seed=None):
 def assert_comparison(res, ref, seed, comparison, **kwargs):
     ref_mask = np.broadcast_to(ref.mask, ref.data.shape)
     try:
-        comparison(res.data[~res.mask], ref.data[~ref_mask], **kwargs)
-        comparison(res.mask, ref_mask, **kwargs)
+        comparison(res.data[~res.mask], ref.data[~ref_mask], strict=True, **kwargs)
+        comparison(res.mask, ref_mask, strict=True, **kwargs)
     except AssertionError as e:
         raise AssertionError(seed) from e
 
@@ -521,10 +521,38 @@ def test_searchsorted(side, xp=strict, seed=None):
 # Test Linear Algebra functions
 
 # Use Array API tests to test the following:
-# Data Type Functions (only `astype` remains to be tested)
-# Elementwise function `clip` (all others are tested above)
+# Creation Functions (same behavior but with all-False mask)
 # Indexing (same behavior as indexing data and mask separately)
 # Manipulation functions (apply to data and mask separately)
+
+
+@pytest.mark.filterwarnings('ignore::numpy.exceptions.ComplexWarning')
+@pytest.mark.parametrize('dtype_in', dtypes_all)
+@pytest.mark.parametrize('dtype_out', dtypes_all)
+@pytest.mark.parametrize('copy', [False, True])
+def test_astype(dtype_in, dtype_out, copy, xp=np, seed=None):
+    mxp = marray.masked_array(xp)
+    marrays, masked_arrays, seed = get_arrays(1, dtype=dtype_in, seed=seed)
+
+    res = mxp.astype(marrays[0], dtype_out, copy=copy)
+    if dtype_in == dtype_out:
+        if copy:
+            assert res.data is not marrays[0].data
+            assert res.mask is not marrays[0].mask
+        else:
+            assert res.data is marrays[0].data
+            assert res.mask is marrays[0].mask
+    ref = masked_arrays[0].astype(dtype_out, copy=copy)
+    assert_equal(res, ref, seed)
+
+
+@pytest.mark.parametrize('dtype', dtypes_real)
+def test_clip(dtype, xp=np, seed=None):
+    mxp = marray.masked_array(xp)
+    marrays, masked_arrays, seed = get_arrays(3, dtype=dtype, seed=seed)
+    res = mxp.clip(marrays[0], min=marrays[1], max=marrays[2])
+    ref = np.ma.clip(*masked_arrays)
+    assert_equal(res, ref, seed)
 
 #?
 # Set functions
