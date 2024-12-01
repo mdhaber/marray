@@ -13,13 +13,13 @@ dtypes_complex = ['complex64', 'complex128']
 dtypes_all = dtypes_boolean + dtypes_integral + dtypes_real + dtypes_complex
 
 
-def get_arrays(n_arrays, *, dtype='float64', xp=np, seed=None):
+def get_arrays(n_arrays, *, ndim=(1, 4), dtype='float64', xp=np, seed=None):
     xpm = marray.masked_array(xp)
 
     entropy = np.random.SeedSequence(seed).entropy
     rng = np.random.default_rng(entropy)
 
-    ndim = rng.integers(1, 4)
+    ndim = rng.integers(*ndim) if isinstance(ndim, tuple) else ndim
     shape = rng.integers(1, 20, size=ndim)
 
     datas = []
@@ -60,7 +60,7 @@ def assert_comparison(res, ref, seed, comparison, **kwargs):
         raise AssertionError(seed) from e
 
 
-def assert_equal(res, ref, seed, **kwargs):
+def assert_equal(res, ref, seed=None, **kwargs):
     return assert_comparison(res, ref, seed, np.testing.assert_equal, **kwargs)
 
 
@@ -416,6 +416,64 @@ def test_statistical_array(f_name, keepdims, xp=np, dtype='float64', seed=None):
     assert_equal(res, ref, seed)
 
 
+# Test Creation functions
+@pytest.mark.parametrize('f_name, args, kwargs', [
+    # Try to pass options that change output compared to default
+    ('arange', (-1.5, 10, 2), dict(dtype=int)),
+    ('asarray', ([1, 2, 3],), dict(dtype=float, copy=True)),
+    ('empty', ((4, 3, 2),), dict(dtype=int)),
+    ('empty_like', (np.empty((4, 3, 2)),), dict(dtype=int)),
+    ('eye', (10, 11), dict(k=2, dtype=int)),
+    ('full', ((4, 3, 2), 5), dict(dtype=float)),
+    ('full_like', (np.empty((4, 3, 2)), 5.), dict(dtype=int)),
+    ('linspace', (1, 20, 100), dict(dtype=int, endpoint=False)),
+    ('ones', ((4, 3, 2),), dict(dtype=int)),
+    ('ones_like', (np.empty((4, 3, 2)),), dict(dtype=int)),
+    ('zeros', ((4, 3, 2),), dict(dtype=int)),
+    ('zeros_like', (np.empty((4, 3, 2)),), dict(dtype=int)),
+])
+# Should `_like` functions inherit the mask of the argument?
+def test_creation(f_name, args, kwargs, xp=np):
+    mxp = marray.masked_array(xp)
+    f_xp = getattr(xp, f_name)
+    f_mxp = getattr(mxp, f_name)
+    res = f_mxp(*args, **kwargs)
+    ref = f_xp(*args, **kwargs)
+    if f_name.startswith('empty'):
+        assert res.data.shape == ref.shape
+    else:
+        np.testing.assert_equal(res.data, ref, strict=True)
+    np.testing.assert_equal(res.mask, xp.full(ref.shape, False), strict=True)
+
+
+@pytest.mark.parametrize('f_name', ['tril', 'triu'])
+@pytest.mark.parametrize('dtype', dtypes_all)
+def test_tri(f_name, dtype, seed=None, xp=np):
+    mxp = marray.masked_array(xp)
+    f_xp = getattr(xp, f_name)
+    f_mxp = getattr(mxp, f_name)
+    marrays, _, seed = get_arrays(1, ndim=(2, 4), dtype=dtype, seed=seed)
+
+    res = f_mxp(marrays[0], k=1)
+    ref_data = f_xp(marrays[0].data, k=1)
+    ref_mask = f_xp(marrays[0].mask, k=1)
+    ref = np.ma.masked_array(ref_data, mask=ref_mask)
+    assert_equal(res, ref, seed)
+
+
+@pytest.mark.parametrize('indexing', ['ij', 'xy'])
+@pytest.mark.parametrize('dtype', dtypes_all)
+def test_meshgrid(indexing, dtype, seed=None, xp=np):
+    mxp = marray.masked_array(xp)
+    marrays, _, seed = get_arrays(1, ndim=1, dtype=dtype, seed=seed)
+
+    res = mxp.meshgrid(*marrays, indexing=indexing)
+    ref_data = xp.meshgrid([marray.data for marray in marrays], indexing=indexing)
+    ref_mask = xp.meshgrid([marray.mask for marray in marrays], indexing=indexing)
+    ref = [np.ma.masked_array(data, mask=mask) for data, mask in zip(ref_data, ref_mask)]
+    [assert_equal(res_array, ref_array, seed) for res_array, ref_array in zip(res, ref)]
+
+
 @pytest.mark.parametrize("side", ['left', 'right'])
 def test_searchsorted(side, xp=strict, seed=None):
     mxp = marray.masked_array(xp)
@@ -463,7 +521,6 @@ def test_searchsorted(side, xp=strict, seed=None):
 # Test Linear Algebra functions
 
 # Use Array API tests to test the following:
-# Creation Functions (same behavior but with all-False mask)
 # Data Type Functions (only `astype` remains to be tested)
 # Elementwise function `clip` (all others are tested above)
 # Indexing (same behavior as indexing data and mask separately)

@@ -203,17 +203,19 @@ def masked_array(xp):
             raise NotImplementedError()
 
         data = getattr(obj, 'data', obj)
+        data = xp.asarray(data, dtype=dtype, device=device, copy=copy)
+
         mask = (getattr(obj, 'mask', xp.full(data.shape, False))
                 if mask is None else mask)
-
-        data = xp.asarray(data, dtype=dtype, device=device, copy=copy)
         mask = xp.asarray(mask, dtype=dtype, device=device, copy=copy)
         return MaskedArray(data, mask=mask)
     mod.asarray = asarray
 
     creation_functions = ['arange', 'empty', 'empty_like', 'eye', 'from_dlpack',
-                          'full', 'full_like', 'linspace', 'meshgrid', 'ones',
-                          'ones_like', 'tril', 'triu', 'zeros', 'zeros_like']
+                          'full', 'full_like', 'linspace', 'ones', 'ones_like',
+                          'zeros', 'zeros_like']
+    #  handled with array manipulation functions
+    creation_manip_functions = ['tril', 'triu', 'meshgrid']
     for name in creation_functions:
         def fun(*args, name=name, **kwargs):
             data = getattr(xp, name)(*args, **kwargs)
@@ -317,8 +319,8 @@ def masked_array(xp):
     mod.matrix_transpose = lambda x: x.mT
 
     ## Manipulation Functions ##
-    first_arg_arrays = {'broadcast_arrays', 'concat', 'stack'}
-    output_arrays = {'broadcast_arrays', 'unstack'}
+    first_arg_arrays = {'broadcast_arrays', 'concat', 'stack', 'meshgrid'}
+    output_arrays = {'broadcast_arrays', 'unstack', 'meshgrid'}
 
     def get_manip_fun(name):
         def manip_fun(x, *args, **kwargs):
@@ -331,7 +333,7 @@ def masked_array(xp):
 
             fun = getattr(xp, name)
 
-            if name == 'broadcast_arrays':
+            if name in {'broadcast_arrays', 'meshgrid'}:
                 res = fun(*data, *args, **kwargs)
                 mask = fun(*mask, *args, **kwargs)
             else:
@@ -346,9 +348,10 @@ def masked_array(xp):
     manip_names = ['broadcast_arrays', 'broadcast_to', 'concat', 'expand_dims',
                    'flip', 'moveaxis', 'permute_dims', 'repeat', 'reshape',
                    'roll', 'squeeze', 'stack', 'tile', 'unstack']
-    for name in manip_names:
+    for name in manip_names + creation_manip_functions:
         setattr(mod, name, get_manip_fun(name))
     mod.broadcast_arrays = lambda *arrays: get_manip_fun('broadcast_arrays')(arrays)
+    mod.meshgrid = lambda *arrays, **kwargs: get_manip_fun('meshgrid')(arrays, **kwargs)
 
     # This is just for regular arrays; not masked arrays
     def xp_swapaxes(arr, axis1, axis2):
