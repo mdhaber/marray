@@ -280,29 +280,6 @@ def masked_array(xp):
         return MaskedArray(data, mask=mask)
     mod.take = take
 
-    def xp_take_along_axis(arr, indices, axis):
-        # This is just for regular arrays; not masked arrays
-        arr = xp_swapaxes(arr, axis, -1)
-        indices = xp_swapaxes(indices, axis, -1)
-
-        m = arr.shape[-1]
-        n = indices.shape[-1]
-
-        shape = list(arr.shape)
-        shape.pop(-1)
-        shape = shape + [n,]
-
-        arr = xp.reshape(arr, (-1,))
-        indices = xp.reshape(indices, (-1, n))
-
-        offset = (xp.arange(indices.shape[0]) * m)[:, xp.newaxis]
-        indices = xp.reshape(offset + indices, (-1,))
-
-        out = arr[indices]
-        out = xp.reshape(out, shape)
-        return xp_swapaxes(out, axis, -1)
-    mod._xp_take_along_axis = xp_take_along_axis
-
     ## Inspection ##
     # Included with dtype functions above
 
@@ -365,13 +342,6 @@ def masked_array(xp):
         setattr(mod, name, get_manip_fun(name))
     mod.broadcast_arrays = lambda *arrays: get_manip_fun('broadcast_arrays')(arrays)
     mod.meshgrid = lambda *arrays, **kwargs: get_manip_fun('meshgrid')(arrays, **kwargs)
-
-    # This is just for regular arrays; not masked arrays
-    def xp_swapaxes(arr, axis1, axis2):
-        axes = list(range(arr.ndim))
-        axes[axis1], axes[axis2] = axes[axis2], axes[axis1]
-        return xp.permute_dims(arr, axes)
-    mod.xp_swapaxes = xp_swapaxes
 
     ## Searching Functions
     def searchsorted(x1, x2, /, *, side='left', sorter=None):
