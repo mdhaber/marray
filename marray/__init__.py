@@ -4,8 +4,7 @@ Masked versions of array API compatible arrays
 
 __version__ = "0.0.4"
 
-import numpy as np  # temporarily used in __repr__ and __str__
-
+import dataclasses
 
 def masked_array(xp):
     """Returns a masked array namespace for an array API backend
@@ -86,20 +85,20 @@ def masked_array(xp):
             self.mask[key] = getattr(other, 'mask', False)
             return self.data.__setitem__(key, getattr(other, 'data', other))
 
+        def _data_mask_string(self, fun):
+            data_str = fun(self.data)
+            mask_str = fun(self.mask)
+            if len(data_str) + len(mask_str) <= 66:
+                return f"MaskedArray({data_str}, {mask_str})"
+            else:
+                return f"MaskedArray(\n    {data_str},\n    {mask_str}\n)"
+
         ## Visualization ##
         def __repr__(self):
-            # temporary: fix for CuPy
-            # eventually: rewrite to avoid masked array
-            data = np.asarray(self.data)
-            mask = np.asarray(self.mask)
-            return np.ma.masked_array(data, mask).__repr__()
+            return self._data_mask_string(repr)
 
         def __str__(self):
-            # temporary: fix for CuPy
-            # eventually: rewrite to avoid masked array
-            data = np.asarray(self.data)
-            mask = np.asarray(self.mask)
-            return np.ma.masked_array(data, mask).__str__()
+            return self._data_mask_string(str)
 
         ## Linear Algebra Methods ##
         def __matmul__(self, other):
@@ -180,6 +179,9 @@ def masked_array(xp):
         xp = x._xp
         if xp.isdtype(x.dtype, 'integral'):
             return xp.iinfo(x.dtype)
+        elif xp.isdtype(x.dtype, 'bool'):
+            binfo = dataclasses.make_dataclass("binfo", ['min', 'max'])
+            return binfo(min=False, max=True)
         else:
             return xp.finfo(x.dtype)
 
@@ -187,6 +189,8 @@ def masked_array(xp):
         pass
 
     mod = module()
+
+    mod.MaskedArray = MaskedArray
 
     ## Constants ##
     constant_names = ['e', 'inf', 'nan', 'newaxis', 'pi']
@@ -255,8 +259,13 @@ def masked_array(xp):
         setattr(mod, name, fun)
 
     ## Indexing Functions
-    # To be written:
-    # take
+    def take(x, indices, /, *, axis=None):
+        indices_data = getattr(indices, 'data', indices)
+        indices_mask = getattr(indices, 'mask', False)
+        data = xp.take(x.data, indices_data, axis=axis)
+        mask = xp.take(x.mask, indices_data, axis=axis) | indices_mask
+        return MaskedArray(data, mask=mask)
+    mod.take = take
 
     def xp_take_along_axis(arr, indices, axis):
         # This is just for regular arrays; not masked arrays
@@ -352,8 +361,18 @@ def masked_array(xp):
     mod.xp_swapaxes = xp_swapaxes
 
     ## Searching Functions
-    # To be added
-    # searchsorted
+    def searchsorted(x1, x2, /, *, side='left', sorter=None):
+        if sorter is not None:
+            x1 = take(x1, sorter)
+
+        mask_count = xp.cumulative_sum(xp.astype(x1.mask, xp.int64))
+        x1_compressed = x1.data[~x1.mask]
+        count = xp.zeros(x1_compressed.size+1, dtype=xp.int64)
+        count[:-1] = mask_count[~x1.mask]
+        count[-1] = count[-2]
+        i = xp.searchsorted(x1_compressed, x2.data, side=side)
+        j = i + xp.take(count, i)
+        return MaskedArray(j, mask=x2.mask)
 
     def nonzero(x, /):
         x = asarray(x)
@@ -370,6 +389,7 @@ def masked_array(xp):
         mask = condition.mask | x1.mask | x2.mask
         return MaskedArray(data, mask)
 
+    mod.searchsorted = searchsorted
     mod.nonzero = nonzero
     mod.where = where
 

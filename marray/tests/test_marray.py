@@ -146,7 +146,7 @@ elementwise_binary = ['add', 'atan2', 'copysign', 'divide', 'equal', 'floor_divi
                       'logaddexp', 'logical_and', 'logical_or', 'logical_xor',
                       'maximum', 'minimum', 'multiply', 'not_equal', 'pow',
                       'remainder', 'subtract']
-searching_array = ['argmax', 'argmin']  # NumPy masked array funcs not good references
+searching_array = ['argmax', 'argmin']
 statistical_array = ['cumulative_sum', 'max', 'mean',
                      'min', 'prod', 'std', 'sum', 'var']
 utility_array = ['all', 'any']
@@ -394,7 +394,7 @@ def test_elementwise_binary(f_name, xp=np, dtype='float64', seed=None):
 
 
 @pytest.mark.parametrize("keepdims", [False, True])
-@pytest.mark.parametrize("f_name", statistical_array + utility_array)
+@pytest.mark.parametrize("f_name", statistical_array + utility_array + searching_array)
 def test_statistical_array(f_name, keepdims, xp=np, dtype='float64', seed=None):
     # TODO: confirm that result should never have mask? Only when all are masked?
     mxp = marray.masked_array(xp)
@@ -410,7 +410,9 @@ def test_statistical_array(f_name, keepdims, xp=np, dtype='float64', seed=None):
     f2 = getattr(xp, f_name2)
     res = f(marrays[0], axis=axis, **kwargs)
     ref = f2(masked_arrays[0], axis=axis, **kwargs)
-    ref = np.ma.masked_array(ref.data, getattr(ref, 'mask', False))
+    # `argmin`/`argmax` don't calculate mask correctly
+    ref_mask = np.all(masked_arrays[0].mask, axis=axis, **kwargs)
+    ref = np.ma.masked_array(ref.data, getattr(ref, 'mask', ref_mask))
     assert_equal(res, ref, seed)
 
 
@@ -472,6 +474,52 @@ def test_meshgrid(indexing, dtype, seed=None, xp=np):
     [assert_equal(res_array, ref_array, seed) for res_array, ref_array in zip(res, ref)]
 
 
+@pytest.mark.parametrize("side", ['left', 'right'])
+def test_searchsorted(side, xp=strict, seed=None):
+    mxp = marray.masked_array(xp)
+
+    rng = np.random.default_rng(seed)
+    n = 20
+    m = 10
+
+    x1 = rng.integers(10, size=n)
+    x1_mask = (rng.random(size=n) > 0.5)
+    x2 = rng.integers(-2, 12, size=m)
+    x2_mask = rng.random(size=m) > 0.5
+
+    x1 = mxp.asarray(x1, mask=x1_mask)
+    x2 = mxp.asarray(x2, mask=x2_mask)
+
+    # Note that the output of `searchsorted` is the same whether
+    # a (valid) `sorter` is provided or the array is sorted to begin with
+    res = xp.searchsorted(x1.data, x2.data, side=side, sorter=xp.argsort(x1.data))
+    ref = xp.searchsorted(xp.sort(x1.data), x2.data, side=side, sorter=None)
+    assert xp.all(res == ref)
+
+    # This is true for `marray`, too
+    res = mxp.searchsorted(x1, x2, side=side, sorter=mxp.argsort(x1))
+    x1 = mxp.sort(x1)
+    ref = mxp.searchsorted(x1, x2, side=side, sorter=None)
+    assert mxp.all(res == ref)
+
+    # And the output satisfies the required properties:
+    for j in range(res.size):
+        i = res[j]
+
+        if i.mask:
+            assert x2.mask[j]
+            continue
+
+        i = i.__index__()
+        v = x2[j]
+        if side == 'left':
+            assert mxp.all(x1[:i] < v) and mxp.all(v <= x1[i:])
+        else:
+            assert mxp.all(x1[:i] <= v) and mxp.all(v < x1[i:])
+
+
+# Test Linear Algebra functions
+
 # Use Array API tests to test the following:
 # Data Type Functions (only `astype` remains to be tested)
 # Elementwise function `clip` (all others are tested above)
@@ -479,8 +527,6 @@ def test_meshgrid(indexing, dtype, seed=None, xp=np):
 # Manipulation functions (apply to data and mask separately)
 
 #?
-# Searching functions - would test argmin/argmax with statistical functions,
-#                       but NumPy masked version isn't correct
 # Set functions
 # Sorting functions
 # __array_namespace__
