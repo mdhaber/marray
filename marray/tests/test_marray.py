@@ -415,6 +415,51 @@ def test_statistical_array(f_name, keepdims, xp=np, dtype='float64', seed=None):
     ref = np.ma.masked_array(ref.data, getattr(ref, 'mask', ref_mask))
     assert_equal(res, ref, seed)
 
+
+@pytest.mark.parametrize("side", ['left', 'right'])
+def test_searchsorted(side, xp=strict, seed=None):
+    mxp = marray.masked_array(xp)
+
+    rng = np.random.default_rng(seed)
+    n = 20
+    m = 10
+
+    x1 = rng.integers(10, size=n)
+    x1_mask = (rng.random(size=n) > 0.5)
+    x2 = rng.integers(-2, 12, size=m)
+    x2_mask = rng.random(size=m) > 0.5
+
+    x1 = mxp.asarray(x1, mask=x1_mask)
+    x2 = mxp.asarray(x2, mask=x2_mask)
+
+    # Note that the output of `searchsorted` is the same whether
+    # a (valid) `sorter` is provided or the array is sorted to begin with
+    res = xp.searchsorted(x1.data, x2.data, side=side, sorter=xp.argsort(x1.data))
+    ref = xp.searchsorted(xp.sort(x1.data), x2.data, side=side, sorter=None)
+    assert xp.all(res == ref)
+
+    # This is true for `marray`, too
+    res = mxp.searchsorted(x1, x2, side=side, sorter=mxp.argsort(x1))
+    x1 = mxp.sort(x1)
+    ref = mxp.searchsorted(x1, x2, side=side, sorter=None)
+    assert mxp.all(res == ref)
+
+    # And the output satisfies the required properties:
+    for j in range(res.size):
+        i = res[j]
+
+        if i.mask:
+            assert x2.mask[j]
+            continue
+
+        i = i.__index__()
+        v = x2[j]
+        if side == 'left':
+            assert mxp.all(x1[:i] < v) and mxp.all(v <= x1[i:])
+        else:
+            assert mxp.all(x1[:i] <= v) and mxp.all(v < x1[i:])
+
+
 # Test Linear Algebra functions
 
 # Use Array API tests to test the following:
