@@ -69,4 +69,5 @@ filterwarnings = [
     "error:::marray.*",
     "ignore:invalid value encountered:RuntimeWarning",
     "ignore:divide by zero encountered:RuntimeWarning",
+    "ignore:overflow encountered:RuntimeWarning",
 ]
