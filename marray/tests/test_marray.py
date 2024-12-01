@@ -146,7 +146,7 @@ elementwise_binary = ['add', 'atan2', 'copysign', 'divide', 'equal', 'floor_divi
                       'logaddexp', 'logical_and', 'logical_or', 'logical_xor',
                       'maximum', 'minimum', 'multiply', 'not_equal', 'pow',
                       'remainder', 'subtract']
-searching_array = ['argmax', 'argmin']  # NumPy masked array funcs not good references
+searching_array = ['argmax', 'argmin']
 statistical_array = ['cumulative_sum', 'max', 'mean',
                      'min', 'prod', 'std', 'sum', 'var']
 utility_array = ['all', 'any']
@@ -394,7 +394,7 @@ def test_elementwise_binary(f_name, xp=np, dtype='float64', seed=None):
 
 
 @pytest.mark.parametrize("keepdims", [False, True])
-@pytest.mark.parametrize("f_name", statistical_array + utility_array)
+@pytest.mark.parametrize("f_name", statistical_array + utility_array + searching_array)
 def test_statistical_array(f_name, keepdims, xp=np, dtype='float64', seed=None):
     # TODO: confirm that result should never have mask? Only when all are masked?
     mxp = marray.masked_array(xp)
@@ -410,7 +410,9 @@ def test_statistical_array(f_name, keepdims, xp=np, dtype='float64', seed=None):
     f2 = getattr(xp, f_name2)
     res = f(marrays[0], axis=axis, **kwargs)
     ref = f2(masked_arrays[0], axis=axis, **kwargs)
-    ref = np.ma.masked_array(ref.data, getattr(ref, 'mask', False))
+    # `argmin`/`argmax` don't calculate mask correctly
+    ref_mask = np.all(masked_arrays[0].mask, axis=axis, **kwargs)
+    ref = np.ma.masked_array(ref.data, getattr(ref, 'mask', ref_mask))
     assert_equal(res, ref, seed)
 
 
@@ -468,8 +470,6 @@ def test_searchsorted(side, xp=strict, seed=None):
 # Manipulation functions (apply to data and mask separately)
 
 #?
-# Searching functions - would test argmin/argmax with statistical functions,
-#                       but NumPy masked version isn't correct
 # Set functions
 # Sorting functions
 # __array_namespace__
