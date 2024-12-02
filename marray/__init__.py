@@ -71,7 +71,15 @@ def get_namespace(xp):
         def mask(self):
             return self._mask
 
-        def call_super_method(self, method_name, *args, **kwargs):
+        def __array_namespace__(self, api_version=None):
+            if api_version is None or api_version == '2023.12':
+                return mod
+            else:
+                message = (f"MArray interface for Array API version '{api_version}' "
+                           "is not implemented.")
+                raise NotImplementedError(message)
+
+        def _call_super_method(self, method_name, *args, **kwargs):
             method = getattr(self.data, method_name)
             args = [getattr(arg, 'data', arg) for arg in args]
             return method(*args, **kwargs)
@@ -143,7 +151,7 @@ def get_namespace(xp):
                    + ['__ceil__'])
     for name in unary_names:
         def fun(self, name=name):
-            data = self.call_super_method(name)
+            data = self._call_super_method(name)
             return MArray(data, self.mask)
         setattr(MArray, name, fun)
 
@@ -151,7 +159,7 @@ def get_namespace(xp):
     unary_names_py = ['__bool__', '__complex__', '__float__', '__index__', '__int__']
     for name in unary_names_py:
         def fun(self, name=name):
-            return self.call_super_method(name)
+            return self._call_super_method(name)
         setattr(MArray, name, fun)
 
     # Methods that return the result of an elementwise binary operation
@@ -166,7 +174,7 @@ def get_namespace(xp):
     for name in binary_names + rbinary_names:
         def fun(self, other, name=name):
             mask = (self.mask | other.mask) if hasattr(other, 'mask') else self.mask
-            data = self.call_super_method(name, other)
+            data = self._call_super_method(name, other)
             return MArray(data, mask)
         setattr(MArray, name, fun)
 
@@ -179,7 +187,7 @@ def get_namespace(xp):
             if hasattr(other, 'mask'):
                 # self.mask |= other.mask doesn't work because mask has no setter
                 self.mask.__ior__(other.mask)
-            self.call_super_method(name, other)
+            self._call_super_method(name, other)
             return self
         setattr(MArray, name, fun)
 

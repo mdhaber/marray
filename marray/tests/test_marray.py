@@ -816,6 +816,17 @@ def test_sorting(f_name, descending, stable, dtype, xp, seed=None):
 
 
 @pytest.mark.parametrize('xp', xps)
+def test_array_namespace(xp):
+    mxp = marray.get_namespace(xp)
+    x = mxp.asarray([1, 2, 3])
+    assert x.__array_namespace__() is mxp
+    assert x.__array_namespace__("2023.12") is mxp
+    message = "MArray interface for Array API version 'shrubbery'..."
+    with pytest.raises(NotImplementedError, match=message):
+        x.__array_namespace__("shrubbery")
+
+
+@pytest.mark.parametrize('xp', xps)
 def test_import(xp):
     mxp = marray.get_namespace(xp)
     from mxp import asarray
@@ -825,13 +836,17 @@ def test_import(xp):
 # To do:
 # - Indexing (same behavior as indexing data and mask separately)
 # - Set functions (see https://github.com/mdhaber/marray/issues/28)
-# - __array_namespace__
 # - improve test_rarray_binary
 # - improve test_statistical_array
 # - improve test_meshgrid - need more inputs
 # - investigate asarray - is copy respected?
 # - investigate test_sorting - what about uint dtypes?
+# - investigate failing_test
+
+# def failing_test():
+#     seed = 87597311899020256922680472523907945305
+#     test_array_binary(array_binary[0], dtype=np.float32, xp=np, seed=seed)
 
 def test_test():
-    seed = 313948498256289901944532431191982951352
-    test_attributes('uint8', strict, seed=seed)
+    seed = 8759731189902025692268047252390794530
+    test_array_binary(array_binary[0], dtype=np.float32, xp=np, seed=seed)
