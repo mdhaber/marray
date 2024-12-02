@@ -19,7 +19,7 @@ dtypes_numeric = dtypes_integral + dtypes_real + dtypes_complex
 dtypes_all = dtypes_boolean + dtypes_integral + dtypes_real + dtypes_complex
 
 
-def get_arrays(n_arrays, *, ndim=(1, 4), dtype='float64', xp=np, seed=None):
+def get_arrays(n_arrays, *, dtype, xp, ndim=(1, 4), seed=None):
     xpm = marray.masked_array(xp)
 
     entropy = np.random.SeedSequence(seed).entropy
@@ -63,7 +63,7 @@ def assert_comparison(res, ref, seed, xp, comparison, **kwargs):
         array_type = type(xp.asarray(1.))
         assert isinstance(res.data, array_type)
         assert isinstance(res.mask, array_type)
-    ref_mask = np.broadcast_to(ref.mask, ref.data.shape)
+    ref_mask = ref.mask.__array_namespace__().broadcast_to(ref.mask, ref.data.shape)
     try:
         comparison(res.data[~res.mask], ref.data[~ref_mask], strict=True, **kwargs)
         comparison(res.mask, ref_mask, strict=True, **kwargs)
@@ -87,7 +87,7 @@ def pass_exceptions(allowed=[]):
                 return f(*args, seed=seed, **kwargs)
             except (ValueError, TypeError) as e:
                 for message in allowed:
-                    if str(e).startswith(message):
+                    if message in str(e):
                         return
                 else:
                     raise AssertionError(seed) from e
@@ -167,12 +167,11 @@ data_type = ['can_cast', 'finfo', 'iinfo', 'isdtype']
 inspection = ['__array_namespace_info__']
 version = ['__array_api_version__']
 elementwise_unary = ['abs', 'acos', 'acosh', 'asin', 'asinh', 'atan', 'atanh',
-                     'ceil', 'cos', 'cosh', 'exp', 'expm1', 'floor', 'isfinite',
-                     'isinf', 'isnan', 'log', 'log1p', 'log2', 'log10',
-                     'logical_not', 'negative', 'positive', 'round', 'sign',
+                     'ceil', 'conj', 'cos', 'cosh', 'exp', 'expm1', 'floor', 'imag',
+                     'isfinite', 'isinf', 'isnan', 'log', 'log1p', 'log2', 'log10',
+                     'logical_not', 'negative', 'positive', 'real', 'round', 'sign',
                      'signbit', 'sin', 'sinh', 'square', 'sqrt', 'tan', 'tanh',
                      'trunc']
-elementwise_unary_complex = ['real', 'imag', 'conj']
 elementwise_binary = ['add', 'atan2', 'copysign', 'divide', 'equal', 'floor_divide',
                       'greater', 'greater_equal', 'hypot', 'less', 'less_equal',
                       'logaddexp', 'logical_and', 'logical_or', 'logical_xor',
@@ -217,12 +216,12 @@ def test_arithmetic_binary(f, dtype, xp, seed=None):
     assert_equal(res, ref, seed=seed, xp=xp)
 
 
-@pytest.mark.parametrize('xp', xps)
 @pytest.mark.parametrize("f", array_binary + array_methods_binary)
 @pytest.mark.parametrize('dtype', dtypes_all)
+@pytest.mark.parametrize('xp', xps)
 @pass_exceptions(allowed=["Only numeric dtypes are allowed in matmul"])
 def test_array_binary(f, dtype, xp, seed=None):
-    marrays, masked_arrays, seed = get_arrays(1, ndim=(2, 4), xp=xp, dtype=dtype, seed=seed)
+    marrays, masked_arrays, seed = get_arrays(1, ndim=(2, 4), dtype=dtype, xp=xp, seed=seed)
     res = f(marrays[0], marrays[0].mT)
     x = masked_arrays[0].data
     mask = masked_arrays[0].mask
@@ -233,43 +232,48 @@ def test_array_binary(f, dtype, xp, seed=None):
     assert_allclose(res, ref, seed=seed, xp=xp, rtol=get_rtol(dtype, xp))
 
 
-@pytest.mark.parametrize("dtype", dtypes_integral + dtypes_boolean)
 @pytest.mark.parametrize("f_name_fun", itertools.chain(bitwise_unary.items(),
                                                        bitwise_methods_unary.items()))
-def test_bitwise_unary(f_name_fun, dtype, xp=np, seed=None):
+@pytest.mark.parametrize("dtype", dtypes_integral + dtypes_boolean)
+@pytest.mark.parametrize('xp', xps)
+def test_bitwise_unary(f_name_fun, dtype, xp, seed=None):
     f_name, f = f_name_fun
     mxp = marray.masked_array(xp)
-    marrays, masked_arrays, seed = get_arrays(1, dtype=dtype, seed=seed)
+    marrays, masked_arrays, seed = get_arrays(1, dtype=dtype, xp=xp, seed=seed)
 
     res = f(~marrays[0])
     ref = f(~masked_arrays[0])
-    assert_equal(res, ref, seed)
+    assert_equal(res, ref, xp=xp, seed=seed)
 
     f = getattr(mxp, f_name)
     res = f(~marrays[0])
-    assert_equal(res, ref, seed)
+    assert_equal(res, ref, xp=xp, seed=seed)
 
 
-@pytest.mark.parametrize("dtype", dtypes_integral + dtypes_boolean)
 @pytest.mark.parametrize("f_name_fun", itertools.chain(bitwise_binary.items(),
                                                        bitwise_methods_binary.items()))
-def test_bitwise_binary(f_name_fun, dtype, xp=np, seed=None):
+@pytest.mark.parametrize("dtype", dtypes_integral + dtypes_boolean)
+@pytest.mark.parametrize('xp', xps)
+@pass_exceptions(allowed=["is only defined for x2 >= 0",
+                          "Only integer dtypes are allowed in "])
+def test_bitwise_binary(f_name_fun, dtype, xp, seed=None):
     f_name, f = f_name_fun
     mxp = marray.masked_array(xp)
-    marrays, masked_arrays, seed = get_arrays(2, dtype=dtype, seed=seed)
+    marrays, masked_arrays, seed = get_arrays(2, dtype=dtype, xp=xp, seed=seed)
 
     res = f(marrays[0], marrays[1])
     ref = f(masked_arrays[0], masked_arrays[1])
-    assert_equal(res, ref, seed)
+    assert_equal(res, ref, xp=xp, seed=seed)
 
     f = getattr(mxp, f_name)
     res = f(marrays[0], marrays[1])
-    assert_equal(res, ref, seed)
+    assert_equal(res, ref, xp=xp, seed=seed)
 
 
 @pytest.mark.parametrize('type_val', scalar_conversions.items())
 @pytest.mark.parametrize('mask', [False, True])
-def test_scalar_conversion(type_val, mask, xp=np):
+@pytest.mark.parametrize('xp', xps)
+def test_scalar_conversion(type_val, mask, xp):
     mxp = marray.masked_array(xp)
     type, val = type_val
     x = mxp.asarray(val)
@@ -281,7 +285,8 @@ def test_scalar_conversion(type_val, mask, xp=np):
     assert isinstance(method(), type)
 
 
-def test_indexing(xp=strict):
+@pytest.mark.parametrize('xp', xps)
+def test_indexing(xp):
     # The implementations of `__getitem__` and `__setitem__` are trivial.
     # This does not make them easy to test exhaustively, but it does make
     # them easy to fix if a shortcoming is identified. Include a very basic
@@ -309,28 +314,33 @@ def test_indexing(xp=strict):
     assert x[2].mask == True
 
 
-def test_dlpack(xp=strict, seed=None):
+@pytest.mark.parametrize("dtype", dtypes_all)
+@pytest.mark.parametrize('xp', xps)
+def test_dlpack(dtype, xp, seed=None):
     # This is a placeholder for a real test when there is a real implementation
     mxp = marray.masked_array(xp)
-    marrays, _, seed = get_arrays(1, seed=seed)
+    marrays, _, seed = get_arrays(1, dtype=dtype, xp=xp, seed=seed)
     assert isinstance(marrays[0].__dlpack__(), type(marrays[0].data.__dlpack__()))
     assert marrays[0].__dlpack_device__() == marrays[0].data.__dlpack_device__()
-    marrays[0].to_device('cpu')
+    marrays[0].to_device(mxp.__array_namespace_info__().default_device())
 
 
-@pytest.mark.parametrize("dtype", dtypes_integral + dtypes_real)
 @pytest.mark.parametrize("f", comparison_binary + comparison_methods_binary)
-def test_comparison_binary(f, dtype, seed=None):
-    marrays, masked_arrays, seed = get_arrays(2, dtype=dtype, seed=seed)
+@pytest.mark.parametrize("dtype", dtypes_all)
+@pytest.mark.parametrize('xp', xps)
+@pass_exceptions(allowed=["Only real numeric dtypes are allowed in"])
+def test_comparison_binary(f, dtype, xp, seed=None):
+    marrays, masked_arrays, seed = get_arrays(2, dtype=dtype, xp=xp, seed=seed)
     res = f(marrays[0], marrays[1])
     ref = f(masked_arrays[0], masked_arrays[1])
-    assert_equal(res, ref, seed)
+    assert_equal(res, ref, xp=xp, seed=seed)
 
 
-@pytest.mark.parametrize("dtype", dtypes_integral + dtypes_real)
 @pytest.mark.parametrize("f", inplace_arithmetic + inplace_bitwise)
-def test_inplace(f, dtype, seed=None):
-    marrays, masked_arrays, seed = get_arrays(2, dtype=dtype, seed=seed)
+@pytest.mark.parametrize("dtype", dtypes_all)
+@pytest.mark.parametrize('xp', xps)
+def test_inplace(f, dtype, xp, seed=None):
+    marrays, masked_arrays, seed = get_arrays(2, dtype=dtype, xp=xp, seed=seed)
     e1 = None
     e2 = None
 
@@ -346,47 +356,59 @@ def test_inplace(f, dtype, seed=None):
     except Exception as e:
         e2 = str(e)
 
-    # either there is something wrong with both or the two results agree
-    if e1 or e2:
+    # With one exception, either there is something wrong with both or the results agree
+    if "Only numeric dtypes are allowed in" in str(e2):
+        pass
+    elif e1 or e2:
         assert e1 and e2
     else:
-        assert_equal(marrays[0], masked_arrays[0], seed)
+        assert_equal(marrays[0], masked_arrays[0], xp=xp, seed=seed)
 
 
 @pytest.mark.parametrize("f", inplace_array)
-def test_inplace_array_binary(f, xp=np, seed=None):
+@pytest.mark.parametrize("dtype", dtypes_all)
+@pytest.mark.parametrize('xp', xps)
+@pass_exceptions(allowed=["Only numeric dtypes are allowed in matmul"])
+def test_inplace_array_binary(f, dtype, xp, seed=None):
     # very restrictive operator -> limited test
     mxp = marray.masked_array(xp)
     rng = np.random.default_rng(seed)
-    data = rng.random((3, 10, 10))
+    data = (rng.random((3, 10, 10))*10).astype(dtype)
     mask = rng.random((3, 10, 10)) > 0.5
-    a = mxp.asarray(data.copy(), mask=mask.copy())
-    data = rng.random((3, 10, 10))
+    a = mxp.asarray(xp.asarray(data, copy=True), mask=xp.asarray(mask, copy=True))
+    data = (rng.random((3, 10, 10))*10).astype(dtype)
     mask = rng.random((3, 10, 10)) > 0.5
-    b = mxp.asarray(data.copy(), mask=mask.copy())
+    b = mxp.asarray(xp.asarray(data, copy=True), mask=xp.asarray(mask, copy=True))
     ref = a @ b
     f(a, b)
-    assert_allclose(a, ref, seed)
+    assert_allclose(a, ref, xp=xp, seed=seed)
 
 
-@pytest.mark.parametrize("dtype", dtypes_real)
 @pytest.mark.parametrize("f", arithmetic_binary)
-def test_rarithmetic_binary(f, dtype, seed=None):
-    mxp = marray.masked_array(strict)
-    marrays, masked_arrays, seed = get_arrays(2, dtype=dtype, seed=seed)
-    marrays[0] = mxp.asarray(marrays[0].data, mask=marrays[0].mask)
-    marrays[1] = mxp.asarray(marrays[1].data, mask=marrays[1].mask)
+@pytest.mark.parametrize("dtype", dtypes_all)
+@pytest.mark.parametrize('xp', xps)
+@pytest.mark.parametrize('type_', ["array", "scalar"])
+@pass_exceptions(allowed=["not supported for the input types",
+                          "Only real numeric dtypes are allowed",
+                          "Only numeric dtypes are allowed",
+                          "Only floating-point dtypes are allowed",
+                          "Integers to negative integer powers are not allowed"])
+def test_rarithmetic_binary(f, dtype, xp, type_, seed=None):
+    marrays, masked_arrays, seed = get_arrays(2, dtype=dtype, xp=xp, seed=seed)
+    if type_ == "array":
+        arg1a = marrays[0].data
+        arg1b = masked_arrays[0].data
+    else:
+        arg1a = arg1b = 2
 
-    res = f(marrays[0].data, marrays[1])
-    ref_data = f(masked_arrays[0].data, masked_arrays[1].data)
+    if xp == np and type_ == "array":
+        pytest.xfail("reflected operators don't work with NumPy arrays")
+
+    res = f(arg1a, marrays[1])
+    ref_data = f(arg1b, masked_arrays[1].data)
     ref_mask = np.broadcast_to(masked_arrays[1].mask, ref_data.shape)
     ref = np.ma.masked_array(ref_data, mask=ref_mask)
-    assert_equal(res, ref, seed)
-
-    # Check that reflected operator works with Python scalar
-    res = f(2, marrays[0])
-    ref = f(getattr(np, dtype)(2), masked_arrays[0])
-    assert_equal(res, ref, seed)
+    assert_equal(res, ref, xp=xp, seed=seed)
 
 
 def test_rarray_binary(xp=np, seed=None):
@@ -405,35 +427,38 @@ def test_rarray_binary(xp=np, seed=None):
     np.testing.assert_equal(np.asarray(res.mask), np.asarray(ref.mask))
 
 
-@pytest.mark.parametrize("dtype", dtypes_integral)
 @pytest.mark.parametrize("f", bitwise_binary.values())
-def test_rbitwise_binary(f, dtype, seed=None):
-    mxp = marray.masked_array(strict)
-    marrays, masked_arrays, seed = get_arrays(2, dtype=dtype, seed=seed)
-    marrays[0] = mxp.asarray(marrays[0].data, mask=marrays[0].mask)
-    marrays[1] = mxp.asarray(marrays[1].data, mask=marrays[1].mask)
+@pytest.mark.parametrize("dtype", dtypes_integral + dtypes_boolean)
+@pytest.mark.parametrize('xp', xps)
+@pass_exceptions(allowed=["Only integer dtypes are allowed in"])
+def test_rbitwise_binary(f, dtype, xp, seed=None):
+    if xp == np:
+        pytest.xfail("reflected operators don't work with NumPy arrays")
 
+    marrays, masked_arrays, seed = get_arrays(2, dtype=dtype, xp=xp, seed=seed)
     res = f(marrays[0].data, marrays[1])
     ref = f(masked_arrays[0].data, masked_arrays[1])
-    assert_equal(res, ref, seed)
+    assert_equal(res, ref, xp=xp, seed=seed)
 
 
 @pytest.mark.parametrize("dtype", dtypes_all)
-def test_attributes(dtype, seed=None, xp=np):
-    marrays, masked_arrays, seed = get_arrays(1, dtype=dtype, seed=seed)
+@pytest.mark.parametrize('xp', xps)
+def test_attributes(dtype, xp, seed=None):
+    marrays, masked_arrays, seed = get_arrays(1, ndim=(2, 4), dtype=dtype, xp=xp, seed=seed)
     assert marrays[0].dtype == marrays[0].data.dtype
     assert marrays[0].device == marrays[0].data.device == marrays[0].mask.device
-    if marrays[0].ndim >= 2:
-        assert xp.all(marrays[0].mT.data == marrays[0].data.mT)
-        assert xp.all(marrays[0].mT.mask == marrays[0].mask.mT)
+    assert xp.all(marrays[0].mT.data == marrays[0].data.mT)
+    assert xp.all(marrays[0].mT.mask == marrays[0].mask.mT)
     assert marrays[0].ndim == marrays[0].data.ndim == marrays[0].mask.ndim
     assert marrays[0].shape == marrays[0].data.shape == marrays[0].mask.shape
     assert marrays[0].size == marrays[0].data.size == marrays[0].mask.size
-    assert xp.all(marrays[0].T.data == marrays[0].data.T)
-    assert xp.all(marrays[0].T.mask == marrays[0].mask.T)
+    if marrays[0].ndim == 2:
+        assert xp.all(marrays[0].T.data == marrays[0].data.T)
+        assert xp.all(marrays[0].T.mask == marrays[0].mask.T)
 
 
-def test_constants(xp=np):
+@pytest.mark.parametrize('xp', xps)
+def test_constants(xp):
     mxp = marray.masked_array(xp)
     assert mxp.e == xp.e
     assert mxp.inf == xp.inf
@@ -443,57 +468,78 @@ def test_constants(xp=np):
 
 
 @pytest.mark.parametrize("f", data_type + inspection + version)
-def test_dtype_funcs_inspection(f, xp=strict):
+@pytest.mark.parametrize('xp', xps)
+def test_dtype_funcs_inspection(f, xp):
     mxp = marray.masked_array(xp)
     getattr(mxp, f) is getattr(xp, f)
 
 
 @pytest.mark.parametrize("dtype", dtypes_all)
-def test_dtypes(dtype, xp=strict):
-    # NumPy fails... unclear whether xp.bool must be a "dtype"
+@pytest.mark.parametrize('xp', xps)
+def test_dtypes(dtype, xp):
+    if xp == np:
+        pytest.xfail("NumPy fails... unclear whether NumPy follows standard here.")
     mxp = marray.masked_array(xp)
     getattr(mxp, dtype).__eq__(getattr(xp, dtype))
 
 
 @pytest.mark.parametrize("f_name", elementwise_unary)
-def test_elementwise_unary(f_name, xp=np, dtype='float64', seed=None):
-    # TODO: confirm that NaNs should not automatically get masked
+@pytest.mark.parametrize("dtype", dtypes_all)
+@pytest.mark.parametrize('xp', xps)
+@pass_exceptions(allowed=["not supported for the input types",
+                          "did not contain a loop with signature matching types",
+                          "The numpy boolean negative, the `-` operator, is not supported",
+                          "Only floating-point dtypes are allowed",
+                          "Only real numeric dtypes are allowed",
+                          "Only real floating-point dtypes are allowed",
+                          "Only numeric dtypes are allowed",
+                          "Only boolean dtypes are allowed",
+                          "Only complex floating-point dtypes are allowed"])
+def test_elementwise_unary(f_name, dtype, xp, seed=None):
     mxp = marray.masked_array(xp)
-    marrays, masked_arrays, seed = get_arrays(1, dtype=dtype, seed=seed)
+    marrays, masked_arrays, seed = get_arrays(1, dtype=dtype, xp=xp, seed=seed)
     f = getattr(mxp, f_name)
     f2 = getattr(xp, f_name)
     res = f(marrays[0])
     ref_data = f2(masked_arrays[0].data)
     ref_mask = masked_arrays[0].mask
     ref = np.ma.masked_array(ref_data, mask=ref_mask)
-    assert_equal(res, ref, seed)
-
-
-@pytest.mark.parametrize("f_name", elementwise_unary_complex)
-@pytest.mark.parametrize('dtype', dtypes_complex)
-def test_elementwise_unary_complex(f_name, dtype, seed=None):
-    test_elementwise_unary(f_name, dtype=dtype, seed=seed)
+    assert_equal(res, ref, xp=xp, seed=seed)
 
 
 @pytest.mark.parametrize("f_name", elementwise_binary)
-def test_elementwise_binary(f_name, xp=np, dtype='float64', seed=None):
+@pytest.mark.parametrize("dtype", dtypes_all)
+@pytest.mark.parametrize('xp', xps)
+@pass_exceptions(allowed=["not supported for the input types",
+                          "numpy boolean subtract, the `-` operator, is not supported",
+                          "Integers to negative integer powers are not allowed.",
+                          "Only floating-point dtypes are allowed",
+                          "Only real numeric dtypes are allowed",
+                          "Only real floating-point dtypes are allowed",
+                          "Only numeric dtypes are allowed",
+                          "Only boolean dtypes are allowed",])
+def test_elementwise_binary(f_name, dtype, xp, seed=None):
     mxp = marray.masked_array(xp)
-    marrays, masked_arrays, seed = get_arrays(2, dtype=dtype, seed=seed)
+    marrays, masked_arrays, seed = get_arrays(2, dtype=dtype, xp=xp, seed=seed)
     f = getattr(mxp, f_name)
-    f2 = getattr(xp, f_name)
+    f2 = getattr(np, f_name)
     res = f(marrays[0], marrays[1])
     ref_data = f2(masked_arrays[0].data, masked_arrays[1].data)
     ref_mask = masked_arrays[0].mask | masked_arrays[1].mask
     ref = np.ma.masked_array(ref_data, mask=ref_mask)
-    assert_equal(res, ref, seed)
+    assert_equal(res, ref, xp=xp, seed=seed)
 
 
 @pytest.mark.parametrize("keepdims", [False, True])
 @pytest.mark.parametrize("f_name", statistical_array + utility_array + searching_array)
-def test_statistical_array(f_name, keepdims, xp=np, dtype='float64', seed=None):
-    # TODO: confirm that result should never have mask? Only when all are masked?
+@pytest.mark.parametrize("dtype", ['float64'])
+@pytest.mark.parametrize('xp', xps)
+@pass_exceptions(allowed=["Only floating-point dtypes are allowed in __truediv__",
+                          "Only numeric dtypes are allowed",
+                          "Only real numeric dtypes are allowed"])
+def test_statistical_array(f_name, keepdims, xp, dtype, seed=None):
     mxp = marray.masked_array(xp)
-    marrays, masked_arrays, seed = get_arrays(1, dtype=dtype, seed=seed)
+    marrays, masked_arrays, seed = get_arrays(1, dtype=dtype, xp=xp, seed=seed)
     rng = np.random.default_rng(seed)
     axes = list(range(marrays[0].ndim))
     axes = axes if f_name == "cumulative_sum" else axes + [None]
@@ -502,84 +548,93 @@ def test_statistical_array(f_name, keepdims, xp=np, dtype='float64', seed=None):
 
     axis = axes[rng.integers(len(axes))]
     f = getattr(mxp, f_name)
-    f2 = getattr(xp, f_name2)
+    f2 = getattr(np, f_name2)
     res = f(marrays[0], axis=axis, **kwargs)
     ref = f2(masked_arrays[0], axis=axis, **kwargs)
     # `argmin`/`argmax` don't calculate mask correctly
     ref_mask = np.all(masked_arrays[0].mask, axis=axis, **kwargs)
     ref = np.ma.masked_array(ref.data, getattr(ref, 'mask', ref_mask))
-    assert_equal(res, ref, seed)
+    assert_allclose(res, ref, xp=xp, seed=seed)
 
 
 # Test Creation functions
 @pytest.mark.parametrize('f_name, args, kwargs', [
     # Try to pass options that change output compared to default
-    ('arange', (-1.5, 10, 2), dict(dtype=int)),
-    ('asarray', ([1, 2, 3],), dict(dtype=float, copy=True)),
-    ('empty', ((4, 3, 2),), dict(dtype=int)),
-    ('empty_like', (np.empty((4, 3, 2)),), dict(dtype=int)),
-    ('eye', (10, 11), dict(k=2, dtype=int)),
-    ('full', ((4, 3, 2), 5), dict(dtype=float)),
-    ('full_like', (np.empty((4, 3, 2)), 5.), dict(dtype=int)),
-    ('linspace', (1, 20, 100), dict(dtype=int, endpoint=False)),
-    ('ones', ((4, 3, 2),), dict(dtype=int)),
-    ('ones_like', (np.empty((4, 3, 2)),), dict(dtype=int)),
-    ('zeros', ((4, 3, 2),), dict(dtype=int)),
-    ('zeros_like', (np.empty((4, 3, 2)),), dict(dtype=int)),
+    ('arange', (1.5, 10, 2), dict()),
+    ('asarray', ([1, 2, 3],), dict(copy=True)),
+    ('empty', ((4, 3, 2),), dict()),
+    ('empty_like', (np.empty((4, 3, 2)),), dict()),
+    ('eye', (10, 11), dict(k=2)),
+    ('full', ((4, 3, 2), 5), dict()),
+    ('full_like', (np.empty((4, 3, 2)), 5.), dict()),
+    ('linspace', (1, 20, 100), dict(endpoint=False)),
+    ('ones', ((4, 3, 2),), dict()),
+    ('ones_like', (np.empty((4, 3, 2)),), dict()),
+    ('zeros', ((4, 3, 2),), dict()),
+    ('zeros_like', (np.empty((4, 3, 2)),), dict()),
 ])
-# Should `_like` functions inherit the mask of the argument?
-def test_creation(f_name, args, kwargs, xp=np):
+@pytest.mark.parametrize("dtype", dtypes_all)
+@pytest.mark.parametrize('xp', xps)
+@pass_exceptions(allowed=[r"arange() is only supported for booleans when"])
+def test_creation(f_name, args, kwargs, dtype, xp, seed=None):
+    dtype = getattr(xp, dtype)
     mxp = marray.masked_array(xp)
     f_xp = getattr(xp, f_name)
     f_mxp = getattr(mxp, f_name)
-    res = f_mxp(*args, **kwargs)
-    ref = f_xp(*args, **kwargs)
+    if f_name.endswith('like'):
+        args = tuple(xp.asarray(arg) for arg in args)
+    res = f_mxp(*args, dtype=dtype, **kwargs)
+    ref = f_xp(*args, dtype=dtype, **kwargs)
     if f_name.startswith('empty'):
         assert res.data.shape == ref.shape
     else:
-        np.testing.assert_equal(res.data, ref, strict=True)
-    np.testing.assert_equal(res.mask, xp.full(ref.shape, False), strict=True)
+        np.testing.assert_equal(res.data, np.asarray(ref), strict=True)
+    np.testing.assert_equal(res.mask, np.full(ref.shape, False), strict=True)
 
 
 @pytest.mark.parametrize('f_name', ['tril', 'triu'])
 @pytest.mark.parametrize('dtype', dtypes_all)
-def test_tri(f_name, dtype, seed=None, xp=np):
+@pytest.mark.parametrize('xp', xps)
+def test_tri(f_name, dtype, xp, seed=None):
     mxp = marray.masked_array(xp)
     f_xp = getattr(xp, f_name)
     f_mxp = getattr(mxp, f_name)
-    marrays, _, seed = get_arrays(1, ndim=(2, 4), dtype=dtype, seed=seed)
+    marrays, _, seed = get_arrays(1, ndim=(2, 4), dtype=dtype, xp=xp, seed=seed)
 
     res = f_mxp(marrays[0], k=1)
     ref_data = f_xp(marrays[0].data, k=1)
     ref_mask = f_xp(marrays[0].mask, k=1)
     ref = np.ma.masked_array(ref_data, mask=ref_mask)
-    assert_equal(res, ref, seed)
+    assert_equal(res, ref, xp=xp, seed=seed)
 
 
 @pytest.mark.parametrize('indexing', ['ij', 'xy'])
 @pytest.mark.parametrize('dtype', dtypes_all)
-def test_meshgrid(indexing, dtype, seed=None, xp=np):
+@pytest.mark.parametrize('xp', [np])
+def test_meshgrid(indexing, dtype, xp, seed=None):
     mxp = marray.masked_array(xp)
-    marrays, _, seed = get_arrays(1, ndim=1, dtype=dtype, seed=seed)
+    marrays, _, seed = get_arrays(1, ndim=1, dtype=dtype, xp=xp, seed=seed)
 
     res = mxp.meshgrid(*marrays, indexing=indexing)
     ref_data = xp.meshgrid([marray.data for marray in marrays], indexing=indexing)
     ref_mask = xp.meshgrid([marray.mask for marray in marrays], indexing=indexing)
     ref = [np.ma.masked_array(data, mask=mask) for data, mask in zip(ref_data, ref_mask)]
-    [assert_equal(res_array, ref_array, seed) for res_array, ref_array in zip(res, ref)]
+    [assert_equal(res_array, ref_array, xp=xp, seed=seed) for res_array, ref_array in zip(res, ref)]
 
 
 @pytest.mark.parametrize("side", ['left', 'right'])
-def test_searchsorted(side, xp=strict, seed=None):
+@pytest.mark.parametrize('dtype', dtypes_integral + dtypes_real)
+@pytest.mark.parametrize('xp', xps)
+def test_searchsorted(side, dtype, xp, seed=None):
     mxp = marray.masked_array(xp)
 
     rng = np.random.default_rng(seed)
     n = 20
     m = 10
 
-    x1 = rng.integers(10, size=n)
+    x1 = rng.integers(10, size=n).astype(dtype)
     x1_mask = (rng.random(size=n) > 0.5)
-    x2 = rng.integers(-2, 12, size=m)
+    x2 = rng.integers(-2, 12, size=m).astype(dtype)
     x2_mask = rng.random(size=m) > 0.5
 
     x1 = mxp.asarray(x1, mask=x1_mask)
@@ -613,33 +668,28 @@ def test_searchsorted(side, xp=strict, seed=None):
             assert mxp.all(x1[:i] <= v) and mxp.all(v < x1[i:])
 
 
-# Test Linear Algebra functions
-
-# Use Array API tests to test the following:
-# Creation Functions (same behavior but with all-False mask)
-# Indexing (same behavior as indexing data and mask separately)
-
-
-@pytest.mark.parametrize('f_name, n_arrays, n_dims, kwargs', [
+@pytest.mark.parametrize('f_name, n_arrays, n_dims, args, kwargs', [
     # Try to pass options that change output compared to default
-    ('broadcast_arrays', 3, (3, 5), dict()),
-    ('broadcast_to', 1, (3, 5), dict(shape=None)),
-    ('concat', 3, (3, 5), dict(axis=1)),
-    ('expand_dims', 1, (3, 5), dict(axis=1)),
-    ('flip', 1, (3, 5), dict(axis=1)),
-    ('moveaxis', 1, (3, 5), dict(source=1, destination=2)),
-    ('permute_dims', 1, 3, dict(axes=[2, 0, 1])),
-    ('repeat', 1, (3, 5), dict(repeats=2, axis=1)),
-    ('reshape', 1, (3, 5), dict(shape=(-1,), copy=False)),
-    ('roll', 1, (3, 5), dict(shift=3, axis=1)),
-    ('squeeze', 1, (3, 5), dict(axis=1)),
-    ('stack', 3, (3, 5), dict(axis=1)),
-    ('tile', 1, (3, 5), dict(reps=(2, 3))),
-    ('unstack', 1, (3, 5), dict(axis=1)),
+    ('broadcast_arrays', 3, (3, 5), tuple(), dict()),
+    ('broadcast_to', 1, (3, 5), tuple(), dict(shape=None)),
+    ('concat', 3, (3, 5), tuple(), dict(axis=1)),
+    ('expand_dims', 1, (3, 5), tuple(), dict(axis=1)),
+    ('flip', 1, (3, 5), tuple(), dict(axis=1)),
+    ('moveaxis', 1, (3, 5), (1, 2), dict()),
+    ('permute_dims', 1, 3, tuple(), dict(axes=[2, 0, 1])),
+    ('repeat', 1, (3, 5), (2,), dict(axis=1)),
+    ('reshape', 1, (3, 5), tuple(), dict(shape=(-1,), copy=False)),
+    ('roll', 1, (3, 5), tuple(), dict(shift=3, axis=1)),
+    ('squeeze', 1, (3, 5), tuple(), dict(axis=1)),
+    ('stack', 3, (3, 5), tuple(), dict(axis=1)),
+    ('tile', 1, (3, 5), ((2, 3),), dict()),
+    ('unstack', 1, (3, 5), tuple(), dict(axis=1)),
 ])
-def test_creation(f_name, n_arrays, n_dims, kwargs, seed=None, xp=np):
+@pytest.mark.parametrize('dtype', dtypes_all)
+@pytest.mark.parametrize('xp', xps)
+def test_manipulation(f_name, n_arrays, n_dims, args, kwargs, dtype, xp, seed=None):
     mxp = marray.masked_array(xp)
-    marrays, _, seed = get_arrays(n_arrays, ndim=n_dims, dtype=xp.float64, seed=seed)
+    marrays, _, seed = get_arrays(n_arrays, ndim=n_dims, dtype=dtype, xp=xp, seed=seed)
     if f_name in {'broadcast_to', 'squeeze'}:
         original_shape = marrays[0].shape
         marrays[0] = marrays[0][:, 0:1, ...]
@@ -651,31 +701,32 @@ def test_creation(f_name, n_arrays, n_dims, kwargs, seed=None, xp=np):
 
     if f_name in {'concat', 'stack'}:
         marrays = mxp.broadcast_arrays(*marrays)
-        res = (f_mxp(marrays, **kwargs))
-        ref_data = f_xp([marray.data for marray in marrays], **kwargs)
-        ref_mask = f_xp([marray.mask for marray in marrays], **kwargs)
+        res = (f_mxp(marrays, *args, **kwargs))
+        ref_data = f_xp([marray.data for marray in marrays], *args, **kwargs)
+        ref_mask = f_xp([marray.mask for marray in marrays], *args, **kwargs)
     else:
-        res = f_mxp(*marrays, **kwargs)
-        ref_data = f_xp(*[marray.data for marray in marrays], **kwargs)
-        ref_mask = f_xp(*[marray.mask for marray in marrays], **kwargs)
+        res = f_mxp(*marrays, *args, **kwargs)
+        ref_data = f_xp(*[marray.data for marray in marrays], *args, **kwargs)
+        ref_mask = f_xp(*[marray.mask for marray in marrays], *args, **kwargs)
 
     ref = np.ma.masked_array(ref_data, mask=ref_mask)
 
     if f_name in {'broadcast_arrays', 'unstack'}:
-        [assert_equal(res_i, ref_i, seed) for res_i, ref_i in zip(res, ref)]
+        [assert_equal(res_i, ref_i, xp=xp, seed=seed) for res_i, ref_i in zip(res, ref)]
     else:
-        assert_equal(res, ref, seed)
+        assert_equal(res, ref, xp=xp, seed=seed)
 
 
 @pytest.mark.filterwarnings('ignore::numpy.exceptions.ComplexWarning')
 @pytest.mark.parametrize('dtype_in', dtypes_all)
 @pytest.mark.parametrize('dtype_out', dtypes_all)
 @pytest.mark.parametrize('copy', [False, True])
-def test_astype(dtype_in, dtype_out, copy, xp=np, seed=None):
+@pytest.mark.parametrize('xp', xps)
+def test_astype(dtype_in, dtype_out, copy, xp, seed=None):
     mxp = marray.masked_array(xp)
-    marrays, masked_arrays, seed = get_arrays(1, dtype=dtype_in, seed=seed)
+    marrays, masked_arrays, seed = get_arrays(1, dtype=dtype_in, xp=xp, seed=seed)
 
-    res = mxp.astype(marrays[0], dtype_out, copy=copy)
+    res = mxp.astype(marrays[0], getattr(xp, dtype_out), copy=copy)
     if dtype_in == dtype_out:
         if copy:
             assert res.data is not marrays[0].data
@@ -684,32 +735,43 @@ def test_astype(dtype_in, dtype_out, copy, xp=np, seed=None):
             assert res.data is marrays[0].data
             assert res.mask is marrays[0].mask
     ref = masked_arrays[0].astype(dtype_out, copy=copy)
-    assert_equal(res, ref, seed)
+    assert_equal(res, ref, xp=xp, seed=seed)
 
 
-@pytest.mark.parametrize('dtype', dtypes_real)
-def test_clip(dtype, xp=np, seed=None):
+@pytest.mark.parametrize('dtype', dtypes_all)
+@pytest.mark.parametrize('xp', xps)
+@pass_exceptions(allowed=["Only real numeric dtypes are allowed"])
+def test_clip(dtype, xp, seed=None):
     mxp = marray.masked_array(xp)
-    marrays, masked_arrays, seed = get_arrays(3, dtype=dtype, seed=seed)
-    res = mxp.clip(marrays[0], min=marrays[1], max=marrays[2])
-    ref = np.ma.clip(*masked_arrays)
-    assert_equal(res, ref, seed)
-
-#?
-# Set functions
-# __array_namespace__
+    marrays, masked_arrays, seed = get_arrays(3, dtype=dtype, xp=xp, seed=seed)
+    min = mxp.minimum(marrays[1], marrays[2])
+    max = mxp.maximum(marrays[1], marrays[2])
+    res = mxp.clip(marrays[0], min=min, max=max)
+    min = np.ma.masked_array(min.data, mask=min.mask)
+    max = np.ma.masked_array(max.data, mask=max.mask)
+    ref = np.ma.clip(masked_arrays[0], min, max)
+    assert_equal(res, ref, xp=xp, seed=seed)
 
 
 @pytest.mark.parametrize("f_name", ['sort', 'argsort'])
 @pytest.mark.parametrize("descending", [False, True])
-@pytest.mark.parametrize("stable", [False])  # NumPy masked arrays don't support True
-@pytest.mark.parametrize('dtype', dtypes_real)
-def test_sorting(f_name, descending, stable, dtype, xp=strict, seed=None):
+@pytest.mark.parametrize("stable", [False, True])
+@pytest.mark.parametrize('dtype', dtypes_real + dtypes_int)
+@pytest.mark.parametrize('xp', xps)
+def test_sorting(f_name, descending, stable, dtype, xp, seed=None):
     mxp = marray.masked_array(xp)
-    marrays, masked_arrays, seed = get_arrays(1, dtype=dtype, seed=seed)
+    marrays, masked_arrays, seed = get_arrays(1, dtype=dtype, xp=xp, seed=seed)
     f_mxp = getattr(mxp, f_name)
     f_xp = getattr(np.ma, f_name)
+
+    if descending and xp==np:
+        pytest.skip("NumPy doesn't have `descending`.")
+
     res = f_mxp(marrays[0], axis=-1, descending=descending, stable=stable)
+
+    if stable:
+        pytest.skip("No easy reference for `stable=True`.")
+
     if descending:
         ref = f_xp(-masked_arrays[0], axis=-1, stable=stable)
         ref = -ref if f_name=='sort' else ref
@@ -717,29 +779,39 @@ def test_sorting(f_name, descending, stable, dtype, xp=strict, seed=None):
         ref = f_xp(masked_arrays[0], axis=-1, stable=stable)
 
     if f_name == 'sort':
-        assert_equal(res, np.ma.masked_array(ref), seed)
+        assert_equal(res, np.ma.masked_array(ref), xp=xp, seed=seed)
     else:
         # We can't just compare the indices because sometimes `np.ma.argsort`
         # doesn't sort the masked elements the same way. Instead, we use the
         # indices to sort the arrays, then compare the sorted masked arrays.
         # (The difference is that we don't compare the masked values.)
         i_sorted = np.asarray(res.data)
-        res_data = np.take_along_axis(marrays[0].data, i_sorted, axis=-1)
-        res_mask = np.take_along_axis(marrays[0].mask, i_sorted, axis=-1)
+        res_data = np.take_along_axis(np.asarray(marrays[0].data), i_sorted, axis=-1)
+        res_mask = np.take_along_axis(np.asarray(marrays[0].mask), i_sorted, axis=-1)
         res = mxp.asarray(res_data, mask=res_mask)
         ref_data = np.take_along_axis(masked_arrays[0].data, ref, axis=-1)
         ref_mask = np.take_along_axis(masked_arrays[0].mask, ref, axis=-1)
         ref = np.ma.MaskedArray(ref_data, mask=ref_mask)
-        assert_equal(res, ref, seed)
+        assert_equal(res, ref, xp=xp, seed=seed)
 
 
-def test_import(xp=np):
+@pytest.mark.parametrize('xp', xps)
+def test_import(xp):
     mxp = marray.masked_array(xp)
     from mxp import asarray
     asarray(10, mask=True)
 
 
+# To do:
+# - Indexing (same behavior as indexing data and mask separately)
+# - Set functions (see https://github.com/mdhaber/marray/issues/28)
+# - __array_namespace__
+# - improve test_rarray_binary
+# - improve test_statistical_array
+# - improve test_meshgrid - need more inputs
+# - investigate asarray - is copy respected?
+# - investigate test_sorting - what about uint dtypes?
+
 def test_test():
-    seed = 149020664425889521094089537542803361848
-    # test_statistical_array('argmin', True, seed=seed)
-    test_rarithmetic_binary(arithmetic_binary[0], 'float32', seed=seed)
+    seed = 313948498256289901944532431191982951352
+    test_attributes('uint8', strict, seed=seed)

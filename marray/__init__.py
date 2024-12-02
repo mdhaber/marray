@@ -44,7 +44,6 @@ def masked_array(xp):
             self._xp = xp
             self._sentinel = (info(self).max if not xp.isdtype(self.dtype, 'bool')
                               else None)
-            self.__array_namespace__ = mod
 
         @property
         def data(self):
@@ -242,8 +241,13 @@ def masked_array(xp):
                  + version_attribute_names):
         setattr(mod, name, getattr(xp, name))
 
-    mod.astype = (lambda x, dtype, /, *, copy=True, **kwargs:
-                  asarray(x, copy=copy or (dtype != x.dtype), dtype=dtype, **kwargs))
+    def astype(x, dtype, /, *, copy=True, device=None):
+        if device is None and not copy and dtype == x.dtype:
+            return x
+        data = xp.astype(x.data, dtype, copy=copy, device=device)
+        mask = xp.astype(x.mask, xp.bool, copy=copy, device=device)
+        return MaskedArray(data, mask=mask)
+    mod.astype = astype
 
     ## Elementwise Functions ##
     elementwise_names = ['abs', 'acos', 'acosh', 'add', 'asin', 'asinh', 'atan',
@@ -265,7 +269,7 @@ def masked_array(xp):
             masks = xp.broadcast_arrays(*masks)
             args = [getattr(arg, 'data', arg) for arg in args]
             out = getattr(xp, name)(*args, **kwargs)
-            return MaskedArray(out, mask=xp.any(masks, axis=0))
+            return MaskedArray(out, mask=xp.any(xp.stack(masks), axis=0))
         setattr(mod, name, fun)
 
 
@@ -273,7 +277,7 @@ def masked_array(xp):
         args = [x, min, max]
         masks = [arg.mask for arg in args if hasattr(arg, 'mask')]
         masks = xp.broadcast_arrays(*masks)
-        mask = xp.any(masks, axis=0)
+        mask = xp.any(xp.stack(masks), axis=0)
         datas = [getattr(arg, 'data', arg) for arg in args]
         data = xp.clip(datas[0], min=datas[1], max=datas[2])
         return MaskedArray(data, mask)
@@ -415,7 +419,8 @@ def masked_array(xp):
             sentinel = info(x).min if descending else info(x).max
             data[x.mask] = sentinel
             fun = getattr(xp, name)
-            res = fun(data, axis=axis, descending=descending, stable=stable)
+            kwargs = {'descending': True} if descending else {}
+            res = fun(data, axis=axis, stable=stable, **kwargs)
             mask = (res == sentinel) if name=='sort' else None
             return MaskedArray(res, mask)
         return sort_fun
@@ -446,7 +451,8 @@ def masked_array(xp):
 
     def count(x, axis=None, keepdims=False):
         x = asarray(x)
-        return xp.sum(~x.mask, axis=axis, keepdims=keepdims)
+        not_mask = xp.astype(~x.mask, xp.uint64)
+        return xp.sum(not_mask, axis=axis, keepdims=keepdims, dtype=xp.uint64)
 
     def cumulative_sum(x, *args, **kwargs):
         x = asarray(x)
@@ -464,8 +470,8 @@ def masked_array(xp):
         # rewrite this to use xp.var but replace masked entries with mean.
         m = mod.mean(x, axis=axis, keepdims=True)
         xm = x - m
-        n = mod.count(x, axis=axis, keepdims=keepdims)
         s = mod.sum(xm**2, axis=axis, keepdims=keepdims)
+        n = mod.count(x, axis=axis, keepdims=keepdims)
         return s / (n - correction)
 
     mod.count = count
