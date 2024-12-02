@@ -592,6 +592,26 @@ def test_creation(f_name, args, kwargs, dtype, xp, seed=None):
     np.testing.assert_equal(res.mask, np.full(ref.shape, False), strict=True)
 
 
+@pytest.mark.parametrize('f_name',
+                         ['empty_like', 'zeros_like', 'ones_like', 'full_like'])
+@pytest.mark.parametrize("dtype", dtypes_all + [None])
+@pytest.mark.parametrize('xp', xps)
+def test_creation_like(f_name, dtype, xp, seed=None):
+    mxp = marray.get_namespace(xp)
+    f_mxp = getattr(mxp, f_name)
+    f_np = getattr(np, f_name)  # np.ma doesn't have full_like
+    args = (2,) if f_name == "full_like" else ()
+    marrays, masked_arrays, seed = get_arrays(1, dtype=dtype, xp=xp, seed=seed)
+    res = f_mxp(marrays[0], *args, dtype=getattr(xp, str(dtype), None))
+    ref = f_np(masked_arrays[0], *args, dtype=dtype)
+    if f_name.startswith('empty'):
+        assert res.data.shape == ref.shape
+        np.testing.assert_equal(res.mask, ref.mask)
+    else:
+        ref = np.ma.masked_array(ref, mask=masked_arrays[0].mask)
+        assert_equal(res, ref, xp=xp, seed=seed)
+
+
 @pytest.mark.parametrize('f_name', ['tril', 'triu'])
 @pytest.mark.parametrize('dtype', dtypes_all)
 @pytest.mark.parametrize('xp', xps)

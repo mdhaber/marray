@@ -218,15 +218,21 @@ def get_namespace(xp):
         return MArray(data, mask=mask)
     mod.asarray = asarray
 
-    creation_functions = ['arange', 'empty', 'empty_like', 'eye', 'from_dlpack',
-                          'full', 'full_like', 'linspace', 'ones', 'ones_like',
-                          'zeros', 'zeros_like']
+    creation_functions = ['arange', 'empty', 'eye', 'from_dlpack',
+                          'full', 'linspace', 'ones', 'zeros']
+    creation_functions_like = ['empty_like', 'full_like', 'ones_like', 'zeros_like']
     #  handled with array manipulation functions
     creation_manip_functions = ['tril', 'triu', 'meshgrid']
     for name in creation_functions:
         def fun(*args, name=name, **kwargs):
             data = getattr(xp, name)(*args, **kwargs)
             return MArray(data)
+        setattr(mod, name, fun)
+
+    for name in creation_functions_like:
+        def fun(x, /, *args, name=name, **kwargs):
+            data = getattr(xp, name)(getattr(x, 'data', x), *args, **kwargs)
+            return MArray(data, mask=getattr(x, 'mask', False))
         setattr(mod, name, fun)
 
     ## Data Type Functions and Data Types ##
