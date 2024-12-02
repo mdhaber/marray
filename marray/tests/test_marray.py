@@ -634,16 +634,20 @@ def test_tri(f_name, dtype, xp, seed=None):
 
 @pytest.mark.parametrize('indexing', ['ij', 'xy'])
 @pytest.mark.parametrize('dtype', dtypes_all)
-@pytest.mark.parametrize('xp', [np])
+@pytest.mark.parametrize('xp', xps)
 def test_meshgrid(indexing, dtype, xp, seed=None):
     mxp = marray.get_namespace(xp)
-    marrays, _, seed = get_arrays(1, ndim=1, dtype=dtype, xp=xp, seed=seed)
+    rng = np.random.default_rng(seed)
+    n = rng.integers(1, 4)
+    marrays, masked_arrays, seed = get_arrays(n, ndim=1, dtype=dtype, xp=xp, seed=seed)
 
     res = mxp.meshgrid(*marrays, indexing=indexing)
-    ref_data = xp.meshgrid([marray.data for marray in marrays], indexing=indexing)
-    ref_mask = xp.meshgrid([marray.mask for marray in marrays], indexing=indexing)
-    ref = [np.ma.masked_array(data, mask=mask) for data, mask in zip(ref_data, ref_mask)]
-    [assert_equal(res_array, ref_array, xp=xp, seed=seed) for res_array, ref_array in zip(res, ref)]
+    ref_data = np.meshgrid(*[array.data for array in masked_arrays], indexing=indexing)
+    ref_mask = np.meshgrid(*[array.mask for array in masked_arrays], indexing=indexing)
+    ref = [np.ma.masked_array(data, mask=mask)
+           for data, mask in zip(ref_data, ref_mask)]
+    for res_array, ref_array in zip(res, ref):
+        assert_equal(res_array, ref_array, xp=xp, seed=seed)
 
 
 @pytest.mark.parametrize("side", ['left', 'right'])
@@ -841,7 +845,6 @@ def test_import(xp):
 # - Indexing (same behavior as indexing data and mask separately)
 # - Set functions (see https://github.com/mdhaber/marray/issues/28)
 # - improve test_statistical_array
-# - improve test_meshgrid - need more inputs
 # - investigate asarray - is copy respected?
 # - investigate test_sorting - what about uint dtypes?
 # - investigate failing_test
