@@ -68,8 +68,12 @@ def assert_comparison(res, ref, seed, xp, comparison, **kwargs):
     ref_mask = ref.mask.__array_namespace__().broadcast_to(ref.mask, ref.data.shape)
     try:
         strict = kwargs.pop('strict', True)
-        comparison(res.data[~res.mask], ref.data[~ref_mask], strict=strict, **kwargs)
-        comparison(res.mask, ref_mask, strict=True, **kwargs)
+        res_data = np.asarray(res.data[~res.mask])
+        res_mask = np.asarray(res.mask)
+        ref_data = np.asarray(ref.data[~ref_mask])
+        ref_mask = np.asarray(ref_mask)
+        comparison(res_data, ref_data, strict=strict, **kwargs)
+        comparison(res_mask, ref_mask, strict=True, **kwargs)
     except AssertionError as e:
         raise AssertionError(seed) from e
 
