@@ -7,24 +7,22 @@ __version__ = "0.0.4"
 import types, sys
 import dataclasses
 
-def masked_array(xp):
-    """Returns a masked array namespace for an array API backend
+def get_namespace(xp):
+    """Returns a masked array namespace for an Array API Standard compatible backend
 
     Examples
     --------
-    >>> from scipy._lib.array_api_compat import numpy as xp
-    >>> from scipy.stats import masked_array
-    >>> ma = masked_array(xp)
-    >>> A = ma.eye(3)
+    >>> import numpy as xp
+    >>> from marray import get_namespace
+    >>> mxp = get_namespace(xp)
+    >>> A = mxp.eye(3)
     >>> A.mask[0, ...] = True
-    >>> x = ma.asarray([1, 2, 3], mask=[False, False, True])
+    >>> x = mxp.asarray([1, 2, 3], mask=[False, False, True])
     >>> A @ x
-    masked_array(data=[--, 2.0, 0.0],
-                 mask=[ True, False, False],
-           fill_value=1e+20)
+    MArray(array([0., 2., 0.]), array([ True, False, False]))
 
     """
-    class MaskedArray:
+    class MArray:
 
         def __init__(self, data, mask=None):
             data = xp.asarray(getattr(data, '_data', data))
@@ -80,7 +78,7 @@ def masked_array(xp):
 
         ## Indexing ##
         def __getitem__(self, key):
-            return MaskedArray(self.data[key], self.mask[key])
+            return MArray(self.data[key], self.mask[key])
 
         def __setitem__(self, key, other):
             self.mask[key] = getattr(other, 'mask', False)
@@ -90,9 +88,9 @@ def masked_array(xp):
             data_str = fun(self.data)
             mask_str = fun(self.mask)
             if len(data_str) + len(mask_str) <= 66:
-                return f"MaskedArray({data_str}, {mask_str})"
+                return f"MArray({data_str}, {mask_str})"
             else:
-                return f"MaskedArray(\n    {data_str},\n    {mask_str}\n)"
+                return f"MArray(\n    {data_str},\n    {mask_str}\n)"
 
         ## Visualization ##
         def __repr__(self):
@@ -112,18 +110,18 @@ def masked_array(xp):
             return
 
         def __rmatmul__(self, other):
-            other = MaskedArray(other)
+            other = MArray(other)
             return mod.matmul(other, self)
 
         ## Attributes ##
 
         @property
         def T(self):
-            return MaskedArray(self.data.T, self.mask.T)
+            return MArray(self.data.T, self.mask.T)
 
         @property
         def mT(self):
-            return MaskedArray(self.data.mT, self.mask.mT)
+            return MArray(self.data.mT, self.mask.mT)
 
         # dlpack
         def __dlpack_device__(self):
@@ -146,15 +144,15 @@ def masked_array(xp):
     for name in unary_names:
         def fun(self, name=name):
             data = self.call_super_method(name)
-            return MaskedArray(data, self.mask)
-        setattr(MaskedArray, name, fun)
+            return MArray(data, self.mask)
+        setattr(MArray, name, fun)
 
     # Methods that return the result of a unary operation as a Python scalar
     unary_names_py = ['__bool__', '__complex__', '__float__', '__index__', '__int__']
     for name in unary_names_py:
         def fun(self, name=name):
             return self.call_super_method(name)
-        setattr(MaskedArray, name, fun)
+        setattr(MArray, name, fun)
 
     # Methods that return the result of an elementwise binary operation
     binary_names = ['__add__', '__sub__', '__and__', '__eq__', '__ge__', '__gt__',
@@ -169,8 +167,8 @@ def masked_array(xp):
         def fun(self, other, name=name):
             mask = (self.mask | other.mask) if hasattr(other, 'mask') else self.mask
             data = self.call_super_method(name, other)
-            return MaskedArray(data, mask)
-        setattr(MaskedArray, name, fun)
+            return MArray(data, mask)
+        setattr(MArray, name, fun)
 
     # In-place methods
     desired_names = ['__iadd__', '__iand__', '__ifloordiv__', '__ilshift__',
@@ -183,7 +181,7 @@ def masked_array(xp):
                 self.mask.__ior__(other.mask)
             self.call_super_method(name, other)
             return self
-        setattr(MaskedArray, name, fun)
+        setattr(MArray, name, fun)
 
     def info(x):
         xp = x._xp
@@ -198,7 +196,7 @@ def masked_array(xp):
     mod = types.ModuleType('mxp')
     sys.modules['mxp'] = mod
 
-    mod.MaskedArray = MaskedArray
+    mod.MArray = MArray
 
     ## Constants ##
     constant_names = ['e', 'inf', 'nan', 'newaxis', 'pi']
@@ -217,7 +215,7 @@ def masked_array(xp):
                 if mask is None else mask)
         mask = xp.asarray(mask, dtype=xp.bool, device=device, copy=copy)
 
-        return MaskedArray(data, mask=mask)
+        return MArray(data, mask=mask)
     mod.asarray = asarray
 
     creation_functions = ['arange', 'empty', 'empty_like', 'eye', 'from_dlpack',
@@ -228,7 +226,7 @@ def masked_array(xp):
     for name in creation_functions:
         def fun(*args, name=name, **kwargs):
             data = getattr(xp, name)(*args, **kwargs)
-            return MaskedArray(data)
+            return MArray(data)
         setattr(mod, name, fun)
 
     ## Data Type Functions and Data Types ##
@@ -246,7 +244,7 @@ def masked_array(xp):
             return x
         data = xp.astype(x.data, dtype, copy=copy, device=device)
         mask = xp.astype(x.mask, xp.bool, copy=copy, device=device)
-        return MaskedArray(data, mask=mask)
+        return MArray(data, mask=mask)
     mod.astype = astype
 
     ## Elementwise Functions ##
@@ -269,7 +267,7 @@ def masked_array(xp):
             masks = xp.broadcast_arrays(*masks)
             args = [getattr(arg, 'data', arg) for arg in args]
             out = getattr(xp, name)(*args, **kwargs)
-            return MaskedArray(out, mask=xp.any(xp.stack(masks), axis=0))
+            return MArray(out, mask=xp.any(xp.stack(masks), axis=0))
         setattr(mod, name, fun)
 
 
@@ -280,7 +278,7 @@ def masked_array(xp):
         mask = xp.any(xp.stack(masks), axis=0)
         datas = [getattr(arg, 'data', arg) for arg in args]
         data = xp.clip(datas[0], min=datas[1], max=datas[2])
-        return MaskedArray(data, mask)
+        return MArray(data, mask)
     mod.clip = clip
 
     ## Indexing Functions
@@ -289,7 +287,7 @@ def masked_array(xp):
         indices_mask = getattr(indices, 'mask', False)
         data = xp.take(x.data, indices_data, axis=axis)
         mask = xp.take(x.mask, indices_data, axis=axis) | indices_mask
-        return MaskedArray(data, mask=mask)
+        return MArray(data, mask=mask)
     mod.take = take
 
     ## Inspection ##
@@ -311,7 +309,7 @@ def masked_array(xp):
             mask = fun(xp.astype(~x1.mask, xp.uint64),
                        xp.astype(~x2.mask, xp.uint64))
             mask = ~xp.astype(mask, xp.bool)
-            return MaskedArray(data, mask)
+            return MArray(data, mask)
         return linalg_fun
 
     linalg_names = ['matmul', 'tensordot', 'vecdot']
@@ -342,8 +340,8 @@ def masked_array(xp):
                 res = fun(data, *args, **kwargs)
                 mask = fun(mask, *args, **kwargs)
 
-            out = (MaskedArray(res, mask) if name not in output_arrays
-                   else [MaskedArray(resi, maski) for resi, maski in zip(res, mask)])
+            out = (MArray(res, mask) if name not in output_arrays
+                   else [MArray(resi, maski) for resi, maski in zip(res, mask)])
             return out
         return manip_fun
 
@@ -367,14 +365,14 @@ def masked_array(xp):
         count[-1] = count[-2]
         i = xp.searchsorted(x1_compressed, x2.data, side=side)
         j = i + xp.take(count, i)
-        return MaskedArray(j, mask=x2.mask)
+        return MArray(j, mask=x2.mask)
 
     def nonzero(x, /):
         x = asarray(x)
         data = xp.asarray(x.data, copy=True)
         data[x.mask] = 0
         res = xp.nonzero(data)
-        return tuple(MaskedArray(resi) for resi in res)
+        return tuple(MArray(resi) for resi in res)
 
     def where(condition, x1, x2, /):
         condition = asarray(condition)
@@ -382,7 +380,7 @@ def masked_array(xp):
         x2 = asarray(x2)
         data = xp.where(condition.data, x1.data, x2.data)
         mask = condition.mask | x1.mask | x2.mask
-        return MaskedArray(data, mask)
+        return MArray(data, mask)
 
     mod.searchsorted = searchsorted
     mod.nonzero = nonzero
@@ -403,8 +401,8 @@ def masked_array(xp):
             fun = getattr(xp, name)
             res = fun(data)
             # this sort of works but could be refined
-            return (MaskedArray(res, res==x._sentinel) if name=='unique_values'
-                    else tuple(MaskedArray(resi, resi==x._sentinel) for resi in res))
+            return (MArray(res, res==x._sentinel) if name=='unique_values'
+                    else tuple(MArray(resi, resi==x._sentinel) for resi in res))
         return set_fun
 
     unique_names = ['unique_values', 'unique_counts', 'unique_inverse', 'unique_all']
@@ -422,7 +420,7 @@ def masked_array(xp):
             kwargs = {'descending': True} if descending else {}
             res = fun(data, axis=axis, stable=stable, **kwargs)
             mask = (res == sentinel) if name=='sort' else None
-            return MaskedArray(res, mask)
+            return MArray(res, mask)
         return sort_fun
 
     sort_names = ['sort', 'argsort']
@@ -446,7 +444,7 @@ def masked_array(xp):
             fun = getattr(xp, name)
             res = fun(data, *args, axis=axis, **kwargs)
             mask = xp.all(x.mask, axis=axis, keepdims=kwargs.get('keepdims', False))
-            return MaskedArray(res, mask=mask)
+            return MArray(res, mask=mask)
         return statistical_fun
 
     def count(x, axis=None, keepdims=False):
@@ -459,7 +457,7 @@ def masked_array(xp):
         data = xp.asarray(x.data, copy=True)
         data[x.mask] = 0
         res = xp.cumulative_sum(data, *args, **kwargs)
-        return MaskedArray(res, x.mask)
+        return MArray(res, x.mask)
 
     def mean(x, axis=None, keepdims=False):
         s = mod.sum(x, axis=axis, keepdims=keepdims)
