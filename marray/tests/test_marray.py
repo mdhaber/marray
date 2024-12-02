@@ -508,7 +508,7 @@ def test_elementwise_unary(f_name, dtype, xp, seed=None):
     f = getattr(mxp, f_name)
     f2 = getattr(xp, f_name)
     res = f(marrays[0])
-    ref_data = f2(masked_arrays[0].data)
+    ref_data = f2(xp.asarray(masked_arrays[0].data))
     ref_mask = masked_arrays[0].mask
     ref = np.ma.masked_array(ref_data, mask=ref_mask)
     assert_equal(res, ref, xp=xp, seed=seed)
