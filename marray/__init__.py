@@ -479,12 +479,14 @@ def get_namespace(xp):
         return s / n
 
     def var(x, axis=None, correction=0, keepdims=False):
-        # rewrite this to use xp.var but replace masked entries with mean.
         m = mod.mean(x, axis=axis, keepdims=True)
         xm = x - m
-        s = mod.sum(xm**2, axis=axis, keepdims=keepdims)
+        xmc = mod.conj(xm) if mod.isdtype(xm.dtype, 'complex floating') else xm
+        s = mod.sum(xm*xmc, axis=axis, keepdims=keepdims)
         n = mod.count(x, axis=axis, keepdims=keepdims)
-        return s / (n - correction)
+        out = s / (n - correction)
+        out = mod.real(out) if mod.isdtype(xm.dtype, 'complex floating') else out
+        return out
 
     mod.count = count
     mod.mean = mean

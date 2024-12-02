@@ -38,6 +38,8 @@ def get_arrays(n_arrays, *, dtype, xp, ndim=(1, 4), seed=None):
 
         if dtype == 'bool':
             data = data > 0
+        elif str(dtype).startswith('complex'):
+            data = (data * 10 + rng.standard_normal(size=shape_i) * 10j).astype(dtype)
         else:
             # multiply by 10 to get some variety in integers
             data = (data*10).astype(dtype)
@@ -65,7 +67,8 @@ def assert_comparison(res, ref, seed, xp, comparison, **kwargs):
         assert isinstance(res.mask, array_type)
     ref_mask = ref.mask.__array_namespace__().broadcast_to(ref.mask, ref.data.shape)
     try:
-        comparison(res.data[~res.mask], ref.data[~ref_mask], strict=True, **kwargs)
+        strict = kwargs.pop('strict', True)
+        comparison(res.data[~res.mask], ref.data[~ref_mask], strict=strict, **kwargs)
         comparison(res.mask, ref_mask, strict=True, **kwargs)
     except AssertionError as e:
         raise AssertionError(seed) from e
@@ -536,12 +539,16 @@ def test_elementwise_binary(f_name, dtype, xp, seed=None):
 
 @pytest.mark.parametrize("keepdims", [False, True])
 @pytest.mark.parametrize("f_name", statistical_array + utility_array + searching_array)
-@pytest.mark.parametrize("dtype", ['float64'])
+@pytest.mark.parametrize("dtype", dtypes_all)
 @pytest.mark.parametrize('xp', xps)
 @pass_exceptions(allowed=["Only floating-point dtypes are allowed in __truediv__",
                           "Only numeric dtypes are allowed",
                           "Only real numeric dtypes are allowed"])
 def test_statistical_array(f_name, keepdims, xp, dtype, seed=None):
+    if dtype.startswith('uint'):
+        # should fix this and ensure strict check at the end
+        pytest.skip("`np.ma` can't provide reference due to numpy/numpy#27885")
+
     mxp = marray.get_namespace(xp)
     marrays, masked_arrays, seed = get_arrays(1, dtype=dtype, xp=xp, seed=seed)
     rng = np.random.default_rng(seed)
@@ -552,13 +559,15 @@ def test_statistical_array(f_name, keepdims, xp, dtype, seed=None):
 
     axis = axes[rng.integers(len(axes))]
     f = getattr(mxp, f_name)
-    f2 = getattr(np, f_name2)
+    f2 = getattr(np.ma, f_name2)
     res = f(marrays[0], axis=axis, **kwargs)
     ref = f2(masked_arrays[0], axis=axis, **kwargs)
+
     # `argmin`/`argmax` don't calculate mask correctly
     ref_mask = np.all(masked_arrays[0].mask, axis=axis, **kwargs)
     ref = np.ma.masked_array(ref.data, getattr(ref, 'mask', ref_mask))
-    assert_allclose(res, ref, xp=xp, seed=seed)
+    strict = ref.shape != ()  # dtype of ref is wrong for scalar
+    assert_allclose(res, ref, xp=xp, seed=seed, strict=strict)
 
 
 # Test Creation functions
@@ -844,7 +853,6 @@ def test_import(xp):
 # To do:
 # - Indexing (same behavior as indexing data and mask separately)
 # - Set functions (see https://github.com/mdhaber/marray/issues/28)
-# - improve test_statistical_array
 # - investigate asarray - is copy respected?
 # - investigate test_sorting - what about uint dtypes?
 # - investigate failing_test
@@ -854,5 +862,5 @@ def test_import(xp):
 #     test_array_binary(array_binary[0], dtype=np.float32, xp=np, seed=seed)
 
 def test_test():
-    seed = 8759731189902025692268047252390794530
-    test_array_binary(array_binary[0], dtype=np.float32, xp=np, seed=seed)
+    seed = 87597311899020256922680472523907945305
+    test_statistical_array('max', True, dtype='int8', xp=np, seed=seed)
