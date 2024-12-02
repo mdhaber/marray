@@ -394,15 +394,15 @@ def test_inplace_array_binary(f, dtype, xp, seed=None):
                           "Only floating-point dtypes are allowed",
                           "Integers to negative integer powers are not allowed"])
 def test_rarithmetic_binary(f, dtype, xp, type_, seed=None):
+    if xp == np and type_ == "array":
+        pytest.xfail("reflected operators don't work with NumPy arrays")
+
     marrays, masked_arrays, seed = get_arrays(2, dtype=dtype, xp=xp, seed=seed)
     if type_ == "array":
         arg1a = marrays[0].data
         arg1b = masked_arrays[0].data
     else:
         arg1a = arg1b = 2
-
-    if xp == np and type_ == "array":
-        pytest.xfail("reflected operators don't work with NumPy arrays")
 
     res = f(arg1a, marrays[1])
     ref_data = f(arg1b, masked_arrays[1].data)
@@ -411,20 +411,24 @@ def test_rarithmetic_binary(f, dtype, xp, type_, seed=None):
     assert_equal(res, ref, xp=xp, seed=seed)
 
 
-def test_rarray_binary(xp=strict, seed=None):
+@pytest.mark.parametrize('dtype', dtypes_all)
+@pytest.mark.parametrize('xp', xps)
+@pass_exceptions(allowed=["Only numeric dtypes are allowed in __matmul__"])
+def test_rarray_binary(dtype, xp, seed=None):
     # very restrictive operator -> limited test
+    if xp == np:
+        pytest.xfail("reflected operators don't work with NumPy arrays")
     mxp = marray.get_namespace(xp)
     rng = np.random.default_rng(seed)
-    data = rng.random((3, 10, 10))
+    data = (rng.random((3, 10, 10))*10).astype(dtype)
     mask = rng.random((3, 10, 10)) > 0.5
-    a = mxp.asarray(data, mask=mask)
-    data = rng.random((3, 10, 10))
+    a = mxp.asarray(xp.asarray(data, copy=True), mask=xp.asarray(mask, copy=True))
+    data = (rng.random((3, 10, 10))*10).astype(dtype)
     mask = rng.random((3, 10, 10)) > 0.5
-    b = mxp.asarray(data.copy(), mask=mask.copy())
+    b = mxp.asarray(xp.asarray(data, copy=True), mask=xp.asarray(mask, copy=True))
     res = a.data @ b
     ref = mxp.asarray(a.data) @ b
-    np.testing.assert_equal(np.asarray(res.data), np.asarray(ref.data))
-    np.testing.assert_equal(np.asarray(res.mask), np.asarray(ref.mask))
+    assert_allclose(res, ref, xp=xp, seed=seed)
 
 
 @pytest.mark.parametrize("f", bitwise_binary.values())
@@ -836,7 +840,6 @@ def test_import(xp):
 # To do:
 # - Indexing (same behavior as indexing data and mask separately)
 # - Set functions (see https://github.com/mdhaber/marray/issues/28)
-# - improve test_rarray_binary
 # - improve test_statistical_array
 # - improve test_meshgrid - need more inputs
 # - investigate asarray - is copy respected?
