@@ -61,10 +61,9 @@ def get_arrays(n_arrays, *, dtype, xp, ndim=(1, 4), seed=None):
 
 
 def assert_comparison(res, ref, seed, xp, comparison, **kwargs):
-    if xp is not None:
-        array_type = type(xp.asarray(1.))
-        assert isinstance(res.data, array_type)
-        assert isinstance(res.mask, array_type)
+    array_type = type(xp.asarray(1.))
+    assert isinstance(res.data, array_type)
+    assert isinstance(res.mask, array_type)
     ref_mask = ref.mask.__array_namespace__().broadcast_to(ref.mask, ref.data.shape)
     try:
         strict = kwargs.pop('strict', True)
@@ -99,8 +98,7 @@ def pass_exceptions(allowed=[]):
 
 
 def get_rtol(dtype, xp):
-    if isinstance(dtype, str):
-        dtype = getattr(xp, dtype)
+    dtype = getattr(xp, dtype)
     if xp.isdtype(dtype, ('real floating', 'complex floating')):
         return xp.finfo(dtype).eps**0.5
     else:
@@ -340,22 +338,24 @@ def test_comparison_binary(f, dtype, xp, seed=None):
 
 
 @pytest.mark.parametrize("f", inplace_arithmetic + inplace_bitwise)
+@pytest.mark.parametrize('arg2_masked', [True, False])
 @pytest.mark.parametrize("dtype", dtypes_all)
 @pytest.mark.parametrize('xp', xps)
-def test_inplace(f, dtype, xp, seed=None):
+def test_inplace(f, arg2_masked, dtype, xp, seed=None):
     marrays, masked_arrays, seed = get_arrays(2, dtype=dtype, xp=xp, seed=seed)
     e1 = None
     e2 = None
 
     try:
         f(masked_arrays[0].data, masked_arrays[1].data)
-        masked_arrays[0].mask |= masked_arrays[1].mask
+        if arg2_masked:
+            masked_arrays[0].mask |= masked_arrays[1].mask
         masked_arrays[0] = np.ma.masked_array(masked_arrays[0].data,
                                               masked_arrays[0].mask)
     except Exception as e:
         e1 = str(e)
     try:
-        f(marrays[0], marrays[1])
+        f(marrays[0], marrays[1] if arg2_masked else marrays[1].data)
     except Exception as e:
         e2 = str(e)
 
@@ -704,6 +704,34 @@ def test_searchsorted(side, dtype, xp, seed=None):
         else:
             assert mxp.all(x1[:i] <= v) and mxp.all(v < x1[i:])
 
+@pytest.mark.parametrize('dtype', dtypes_all)
+@pytest.mark.parametrize('xp', xps)
+def test_where(dtype, xp, seed=None):
+    mxp = marray.get_namespace(xp)
+    marrays, masked_arrays, seed = get_arrays(2, dtype=dtype, xp=xp, seed=seed)
+    rng = np.random.default_rng(seed)
+    cond = rng.random(marrays[0].shape) > 0.5
+    res = mxp.where(xp.asarray(cond), *marrays)
+    ref = np.ma.where(cond, *masked_arrays)
+    assert_equal(res, ref, xp=xp, seed=seed)
+
+
+@pytest.mark.parametrize('dtype', dtypes_all)
+@pytest.mark.parametrize('xp', xps)
+def test_nonzero(dtype, xp, seed=None):
+    mxp = marray.get_namespace(xp)
+    marrays, masked_arrays, seed = get_arrays(1, dtype=dtype, xp=xp, seed=seed)
+    x, y = marrays[0], masked_arrays[0]
+    rng = np.random.default_rng(seed)
+    cond = rng.random(marrays[0].shape) > 0.5
+    x[xp.asarray(cond)] = 0
+    y[xp.asarray(cond)] = 0
+    res = mxp.nonzero(x)
+    ref = np.ma.nonzero(y)
+    for i in range(len(ref)):
+        np.testing.assert_equal(res[i].data, ref[i])
+        np.testing.assert_equal(res[i].mask, np.full(ref[i].shape, False))
+
 
 @pytest.mark.parametrize('f_name, n_arrays, n_dims, args, kwargs', [
     # Try to pass options that change output compared to default
@@ -773,6 +801,15 @@ def test_astype(dtype_in, dtype_out, copy, xp, seed=None):
             assert res.mask is marrays[0].mask
     ref = masked_arrays[0].astype(dtype_out, copy=copy)
     assert_equal(res, ref, xp=xp, seed=seed)
+
+
+@pytest.mark.parametrize('xp', xps)
+def test_asarray_device(xp):
+    mxp = marray.get_namespace(xp)
+    message = "`device` argument is not implemented"
+    with pytest.raises(NotImplementedError, match=message):
+        mxp.asarray(xp.asarray([1, 2, 3]), device='coconut')
+
 
 
 @pytest.mark.parametrize('dtype', dtypes_all)
@@ -849,6 +886,24 @@ def test_import(xp):
     from mxp import asarray
     asarray(10, mask=True)
 
+@pytest.mark.parametrize('xp', xps)
+def test_str(xp):
+    mxp = marray.get_namespace(xp)
+    x = mxp.asarray(1, mask=True)
+    ref = "MArray(1, True)"
+    assert str(x) == ref
+
+def test_repr():
+    mxp = marray.get_namespace(strict)
+    x = mxp.asarray(1, mask=True)
+    ref = ("MArray(\n    Array(1, dtype=array_api_strict.int64),"
+           "\n    Array(True, dtype=array_api_strict.bool)\n)")
+    assert repr(x) == ref
+
+    mxp = marray.get_namespace(np)
+    x = mxp.asarray(1, mask=True)
+    ref = "MArray(array(1), array(True))"
+    assert repr(x) == ref
 
 # To do:
 # - Indexing (same behavior as indexing data and mask separately)

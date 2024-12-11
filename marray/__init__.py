@@ -214,7 +214,7 @@ def get_namespace(xp):
     ## Creation Functions ##
     def asarray(obj, /, *, mask=None, dtype=None, device=None, copy=None):
         if device is not None:
-            raise NotImplementedError()
+            raise NotImplementedError("`device` argument is not implemented")
 
         data = getattr(obj, 'data', obj)
         data = xp.asarray(data, dtype=dtype, device=device, copy=copy)
@@ -393,7 +393,9 @@ def get_namespace(xp):
         x1 = asarray(x1)
         x2 = asarray(x2)
         data = xp.where(condition.data, x1.data, x2.data)
-        mask = condition.mask | x1.mask | x2.mask
+        mask = xp.where(condition.data,
+                        condition.mask | x1.mask,
+                        condition.mask | x2.mask)
         return MArray(data, mask)
 
     mod.searchsorted = searchsorted
