@@ -510,4 +510,21 @@ def get_namespace(xp):
         setattr(mod, name, get_statistical_fun(name))
     mod.cumulative_sum = cumulative_sum
 
+    preface = ["The following is the documentation for the corresponding "
+               f"attribute of `{xp.__name__}`.",
+               "The behavior of `marray` is the same when the mask is all "
+               "`False`, and differs",
+               "(as described in the tutorial) when the mask has `True` elements.\n"]
+    preface = "\n".join(preface)
+    for attribute in mod.__dict__.keys():
+        # Add documentation if it is not already present
+        if getattr(mod, attribute).__doc__:
+            continue
+
+        if xp_doc := getattr(xp, attribute, "").__doc__:
+            try:
+                getattr(mod, attribute).__doc__ = preface + xp_doc
+            except AttributeError:
+                pass
+
     return mod
