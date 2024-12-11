@@ -18,7 +18,7 @@ dependencies = []
 requires-python = ">=3.10"
 
 [project.optional-dependencies]
-test = ["numpy", "pytest"]
+test = ["array-api-strict", "numpy", "pytest"]
 
 [project.urls]
 Home = "https://github.com/mdhaber/marray"
