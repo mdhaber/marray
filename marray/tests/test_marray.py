@@ -98,8 +98,7 @@ def pass_exceptions(allowed=[]):
 
 
 def get_rtol(dtype, xp):
-    if isinstance(dtype, str):
-        dtype = getattr(xp, dtype)
+    dtype = getattr(xp, dtype)
     if xp.isdtype(dtype, ('real floating', 'complex floating')):
         return xp.finfo(dtype).eps**0.5
     else:
@@ -339,22 +338,24 @@ def test_comparison_binary(f, dtype, xp, seed=None):
 
 
 @pytest.mark.parametrize("f", inplace_arithmetic + inplace_bitwise)
+@pytest.mark.parametrize('arg2_masked', [True, False])
 @pytest.mark.parametrize("dtype", dtypes_all)
 @pytest.mark.parametrize('xp', xps)
-def test_inplace(f, dtype, xp, seed=None):
+def test_inplace(f, arg2_masked, dtype, xp, seed=None):
     marrays, masked_arrays, seed = get_arrays(2, dtype=dtype, xp=xp, seed=seed)
     e1 = None
     e2 = None
 
     try:
         f(masked_arrays[0].data, masked_arrays[1].data)
-        masked_arrays[0].mask |= masked_arrays[1].mask
+        if arg2_masked:
+            masked_arrays[0].mask |= masked_arrays[1].mask
         masked_arrays[0] = np.ma.masked_array(masked_arrays[0].data,
                                               masked_arrays[0].mask)
     except Exception as e:
         e1 = str(e)
     try:
-        f(marrays[0], marrays[1])
+        f(marrays[0], marrays[1] if arg2_masked else marrays[1].data)
     except Exception as e:
         e2 = str(e)
 
