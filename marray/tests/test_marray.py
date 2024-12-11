@@ -314,6 +314,13 @@ def test_indexing(xp):
     assert x[2].data == 40
     assert x[2].mask == True
 
+    # Indexing with masked array is not allowed
+    message = "Correct behavior for indexing with a masked array..."
+    with pytest.raises(NotImplementedError, match=message):
+        x[x]
+    with pytest.raises(NotImplementedError, match=message):
+        x[x] = 1
+
 
 @pytest.mark.parametrize("dtype", dtypes_all)
 @pytest.mark.parametrize('xp', xps)
