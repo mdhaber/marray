@@ -539,4 +539,9 @@ def get_namespace(xp):
             except (ValueError, TypeError):
                 pass
 
+            try:
+                mod_attr.__name__ = xp_attr.__name__
+            except (AttributeError, TypeError):
+                pass
+
     return mod
