@@ -45,6 +45,8 @@ def get_namespace(xp):
             self._sentinel = (info(self).max if not xp.isdtype(self.dtype, 'bool')
                               else None)
 
+        __array_priority__ = 1  # make reflected operators work with NumPy
+
         @property
         def data(self):
             return self._data
