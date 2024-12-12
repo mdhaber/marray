@@ -114,6 +114,14 @@ def get_namespace(xp):
                 return f"MArray(\n    {data_str},\n    {mask_str}\n)"
 
         ## Visualization ##
+        def _repr_inline_(self):  # for xarray
+            fill_value = self._sentinel
+
+            wrapped_cls = type(self.data)
+            wrapped_cls_name = wrapped_cls.__module__ + "." + wrapped_cls.__name__
+
+            return f"<marray.MaskedArray(fill_value={fill_value}, wrapped={wrapped_cls_name})>"
+
         def __repr__(self):
             return formatting.format_repr(self)
 
