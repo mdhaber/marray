@@ -1,6 +1,7 @@
 import functools
 import itertools
 import operator
+import inspect
 
 import array_api_strict as strict
 import numpy as np
@@ -309,10 +310,10 @@ def test_indexing(xp):
     # `__setitem__` can change mask
     x[1] = mxp.asarray(30, mask=False)
     assert x[1].data == 30
-    assert x[1].mask == False
+    assert x[1].mask is False
     x[2] = mxp.asarray(40, mask=True)
     assert x[2].data == 40
-    assert x[2].mask == True
+    assert x[2].mask is True
 
     # Indexing with masked array is not allowed
     message = "Correct behavior for indexing with a masked array..."
@@ -912,12 +913,17 @@ def test_repr():
     ref = "MArray(array(1), array(True))"
     assert repr(x) == ref
 
+def test_signature_docs():
+    # Rough test that signatures were replaced where possible
+    mxp = marray.get_namespace(np)
+    assert mxp.sum.__signature__ == inspect.signature(np.sum)
+    assert np.sum.__doc__ in mxp.sum.__doc__
+
 # To do:
 # - Indexing (same behavior as indexing data and mask separately)
 # - Set functions (see https://github.com/mdhaber/marray/issues/28)
 # - investigate asarray - is copy respected?
 # - investigate test_sorting - what about uint dtypes?
-# - investigate failing_test
 
 # def failing_test():
 #     seed = 87597311899020256922680472523907945305

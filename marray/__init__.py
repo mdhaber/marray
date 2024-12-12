@@ -4,7 +4,9 @@ Masked versions of array API compatible arrays
 
 __version__ = "0.0.5"
 
-import types, sys
+import types
+import sys
+import inspect
 import dataclasses
 
 def get_namespace(xp):
@@ -514,17 +516,27 @@ def get_namespace(xp):
                f"attribute of `{xp.__name__}`.",
                "The behavior of `marray` is the same when the mask is all "
                "`False`, and differs",
-               "(as described in the tutorial) when the mask has `True` elements.\n"]
+               "(as described in the tutorial) when the mask has `True` elements.\n\n"]
     preface = "\n".join(preface)
     for attribute in mod.__dict__.keys():
         # Add documentation if it is not already present
         if getattr(mod, attribute).__doc__:
             continue
 
-        if xp_doc := getattr(xp, attribute, "").__doc__:
+        xp_attr = getattr(xp, attribute, None)
+        mod_attr = getattr(mod, attribute, None)
+        if xp_attr is not None and mod_attr is not None:
+
+            if hasattr(xp_attr, "__doc__"):
+                try:
+                    xp_doc = getattr(xp_attr, "__doc__")
+                    getattr(mod, attribute).__doc__ = preface + xp_doc
+                except (AttributeError, TypeError):
+                    pass
+
             try:
-                getattr(mod, attribute).__doc__ = preface + xp_doc
-            except AttributeError:
+                mod_attr.__signature__ = inspect.signature(xp_attr)
+            except (ValueError, TypeError):
                 pass
 
     return mod
