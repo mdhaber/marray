@@ -228,7 +228,7 @@ def test_array_binary(f, dtype, xp, seed=None):
     x = masked_arrays[0].data
     mask = masked_arrays[0].mask
     x[mask] = 0
-    data = f(x, x.mT)
+    data = f(x, x.mT.copy())  # .copy to prevent gh-33
     mask = ~f(~mask, ~mask.mT)
     ref = np.ma.masked_array(data, mask=mask)
     assert_allclose(res, ref, seed=seed, xp=xp, rtol=get_rtol(dtype, xp))
@@ -925,9 +925,12 @@ def test_signature_docs():
 # - investigate asarray - is copy respected?
 # - investigate test_sorting - what about uint dtypes?
 
-# def failing_test():
-#     seed = 87597311899020256922680472523907945305
-#     test_array_binary(array_binary[0], dtype=np.float32, xp=np, seed=seed)
+### Bug-fix tests
+
+def test_gh33():
+    # See https://github.com/mdhaber/marray/issues/33
+    seed = 87597311899020256922680472523907945305
+    test_array_binary(array_binary[0], dtype='float32', xp=np, seed=seed)
 
 def test_test():
     seed = 87597311899020256922680472523907945305
