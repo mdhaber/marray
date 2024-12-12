@@ -403,11 +403,9 @@ def test_inplace_array_binary(f, dtype, xp, seed=None):
                           "Only real numeric dtypes are allowed",
                           "Only numeric dtypes are allowed",
                           "Only floating-point dtypes are allowed",
-                          "Integers to negative integer powers are not allowed"])
+                          "Integers to negative integer powers are not allowed",
+                          "numpy boolean subtract, the `-` operator, is not supported"])
 def test_rarithmetic_binary(f, dtype, xp, type_, seed=None):
-    if xp == np and type_ == "array":
-        pytest.xfail("reflected operators don't work with NumPy arrays")
-
     marrays, masked_arrays, seed = get_arrays(2, dtype=dtype, xp=xp, seed=seed)
     if type_ == "array":
         arg1a = marrays[0].data
@@ -427,8 +425,6 @@ def test_rarithmetic_binary(f, dtype, xp, type_, seed=None):
 @pass_exceptions(allowed=["Only numeric dtypes are allowed in __matmul__"])
 def test_rarray_binary(dtype, xp, seed=None):
     # very restrictive operator -> limited test
-    if xp == np:
-        pytest.xfail("reflected operators don't work with NumPy arrays")
     mxp = marray.get_namespace(xp)
     rng = np.random.default_rng(seed)
     data = (rng.random((3, 10, 10))*10).astype(dtype)
@@ -447,9 +443,6 @@ def test_rarray_binary(dtype, xp, seed=None):
 @pytest.mark.parametrize('xp', xps)
 @pass_exceptions(allowed=["Only integer dtypes are allowed in"])
 def test_rbitwise_binary(f, dtype, xp, seed=None):
-    if xp == np:
-        pytest.xfail("reflected operators don't work with NumPy arrays")
-
     marrays, masked_arrays, seed = get_arrays(2, dtype=dtype, xp=xp, seed=seed)
     res = f(marrays[0].data, marrays[1])
     ref = f(masked_arrays[0].data, masked_arrays[1])
