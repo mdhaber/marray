@@ -929,8 +929,7 @@ def test_signature_docs():
 
 def test_gh33():
     # See https://github.com/mdhaber/marray/issues/33
-    seed = 87597311899020256922680472523907945305
-    test_array_binary(array_binary[0], dtype='float32', xp=np, seed=seed)
+    test_array_binary(array_binary[0], dtype='float32', xp=np, seed=566)
 
 def test_test():
     seed = 87597311899020256922680472523907945305
