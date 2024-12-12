@@ -1,0 +1,96 @@
+name: Upstream-dev CI
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+    types: [opened, reopened, synchronize, labeled]
+  schedule:
+    - cron: "0 0 * * 1" # Mondays “At 00:00” UTC
+  workflow_dispatch: # allows you to trigger the workflow run manually
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  detect-ci-trigger:
+    name: detect ci trigger
+    runs-on: ubuntu-latest
+    if: |
+      github.repository_owner == 'mdhaber' && github.event_name == 'pull_request'
+    outputs:
+      triggered: ${{ steps.detect-trigger.outputs.trigger-found }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - uses: xarray-contrib/ci-trigger@v1
+        id: detect-trigger
+        with:
+          keyword: "[test-upstream]"
+
+  tests:
+    name: upstream-dev
+    runs-on: ubuntu-latest
+    needs: detect-ci-trigger
+    if: |
+      always()
+      && (
+        (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')
+        || needs.detect-ci-trigger.outputs.triggered == 'true'
+        || contains(github.event.pull_request.labels.*.name, 'run-upstream')
+      )
+
+    defaults:
+      run:
+        shell: bash -leo pipefail {0} {0}
+
+    strategy:
+      fail-fast: false
+
+      matrix:
+        python-version: ["3.12"]
+
+    steps:
+      - name: Clone repository
+        uses: actions/checkout@v4
+
+      - name: Setup environment
+        uses: actions/setup-python@v5
+        with:
+          python-version: "${{ matrix.python-version }}"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install -r ci/requirements/environment.txt
+
+      - name: Install upstream versions
+        run: |
+          bash ci/install-upstream-wheels.sh
+
+      - name: Install marray
+        run: |
+          python -m pip install --no-deps -e .
+
+      - name: Import marray
+        run: |
+          python -c "import marray"
+
+      - name: Run tests
+        if: success()
+        id: run-tests
+        run: |
+          python -m pytest --report-log output-${{ matrix.python-version }}-log.jsonl
+
+      - name: Generate and publish a failure report
+        if: |
+          failure()
+          && steps.run-tests.outcome == 'failure'
+          && github.event_name == 'schedule'
+          && github.repository_owner == 'xarray-contrib'
+        uses: xarray-contrib/issue-from-pytest-log@v1
+        with:
+          log-path: output-${{ matrix.python-version }}-log.jsonl
