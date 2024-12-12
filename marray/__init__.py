@@ -8,6 +8,7 @@ import types
 import sys
 import inspect
 import dataclasses
+from . import formatting
 
 def get_namespace(xp):
     """Returns a masked array namespace for an Array API Standard compatible backend
@@ -113,11 +114,19 @@ def get_namespace(xp):
                 return f"MArray(\n    {data_str},\n    {mask_str}\n)"
 
         ## Visualization ##
+        def _repr_inline_(self):  # for xarray
+            fill_value = self._sentinel
+
+            wrapped_cls = type(self.data)
+            wrapped_cls_name = wrapped_cls.__module__ + "." + wrapped_cls.__name__
+
+            return f"<marray.MaskedArray(fill_value={fill_value}, wrapped={wrapped_cls_name})>"
+
         def __repr__(self):
-            return self._data_mask_string(repr)
+            return formatting.format_repr(self)
 
         def __str__(self):
-            return self._data_mask_string(str)
+            return formatting.format_array(self.data, self.mask)
 
         ## Linear Algebra Methods ##
         def __matmul__(self, other):
