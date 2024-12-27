@@ -1,7 +1,7 @@
 import functools
+import inspect
 import itertools
 import operator
-import inspect
 
 import array_api_strict as strict
 import numpy as np
@@ -310,10 +310,10 @@ def test_indexing(xp):
     # `__setitem__` can change mask
     x[1] = mxp.asarray(30, mask=False)
     assert x[1].data == 30
-    assert x[1].mask == False
+    assert not x[1].mask  # mask == array(False)
     x[2] = mxp.asarray(40, mask=True)
     assert x[2].data == 40
-    assert x[2].mask == True
+    assert x[2].mask  # mask == array(True)
 
     # Indexing with masked array is not allowed
     message = "Correct behavior for indexing with a masked array..."
@@ -883,7 +883,7 @@ def test_array_namespace(xp):
 
 @pytest.mark.parametrize('xp', xps)
 def test_import(xp):
-    mxp = marray.get_namespace(xp)
+    mxp = marray.get_namespace(xp)  # noqa: F841
     from mxp import asarray
     asarray(10, mask=True)
 
