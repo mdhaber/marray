@@ -90,15 +90,6 @@ jobs:
       - name: Clone repository
         uses: actions/checkout@v4
 
-      - name: Checkout array-api-tests
-        uses: actions/checkout@v4
-        with:
-          repository: data-apis/array-api-tests
-          ref: "8d4ccd63d860ba7202cb5ae1282aaf37d5578b10" # Latest commit as of 2024-12-27
-          submodules: "true"
-          path: "array-api-tests"
-          persist-credentials: false
-
       - name: Setup environment
         uses: actions/setup-python@v5
         with:
@@ -113,6 +104,15 @@ jobs:
       - name: Install marray
         run: |
           python -m pip install --no-deps -e .
+
+      - name: Checkout array-api-tests
+        uses: actions/checkout@v4
+        with:
+          repository: data-apis/array-api-tests
+          ref: "8d4ccd63d860ba7202cb5ae1282aaf37d5578b10" # Latest commit as of 2024-12-27
+          submodules: "true"
+          path: "array-api-tests"
+          persist-credentials: false
 
       - name: Setup test suite
         run: |
