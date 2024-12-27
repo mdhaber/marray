@@ -100,7 +100,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: data-apis/array-api-tests
-          ref: "8d4ccd63d860ba7202cb5ae1282aaf37d5578b10" # Latest commit as of 2024-12-27
+          ref: "606cc4d11fbcb9abdf425ea6bfe21405228d1d89" # Latest commit as of 2024-12-27
           submodules: "true"
           path: "array-api-tests"
           persist-credentials: false
@@ -118,11 +118,8 @@ jobs:
         run: |
           cd ${GITHUB_WORKSPACE}/array-api-tests
           git apply ${GITHUB_WORKSPACE}/ci/xp-tests.patch
-          git submodule update --init
 
       - name: Run the test suite
         run: |
           cd ${GITHUB_WORKSPACE}/array-api-tests
-          ls -l array-api/spec
-          ls -l array-api/spec/2023.12
-          pytest -v -rxXfE array_api_tests/
+          pytest -v -rxXfE --ci --max-examples=100 --derandomize --disable-deadline array_api_tests/
