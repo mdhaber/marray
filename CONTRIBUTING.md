@@ -5,10 +5,10 @@ at [Contributing to a project](https://docs.github.com/en/get-started/exploring-
 
 Typical contributions include:
 
-- Filing [issues](<[url](https://github.com/mdhaber/marray/issues)>)
+- Filing [issues](https://github.com/mdhaber/marray/issues)
   (e.g. bug reports and feature requests)
 - Triaging (adding new information to facilitate resolution of an issue)
-- Code (submitting [pull requests](<[url](https://github.com/mdhaber/marray/pulls)>),
+- Code (submitting [pull requests](https://github.com/mdhaber/marray/pulls),
   especially to resolve open issues)
 - Improving documentation
 
