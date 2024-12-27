@@ -119,10 +119,10 @@ jobs:
           cd ${GITHUB_WORKSPACE}/array-api-tests
           git apply ${GITHUB_WORKSPACE}/ci/xp-tests.patch
           git submodule update --init
-          ls -l
+          ls -l array-api
 
       - name: Run the test suite
         run: |
           cd ${GITHUB_WORKSPACE}/array-api-tests
-          ls -l
+          ls -l array-api
           pytest -v -rxXfE array_api_tests/
