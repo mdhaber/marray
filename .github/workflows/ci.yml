@@ -121,4 +121,4 @@ jobs:
 
       - name: Run the test suite
         run: |
-          pytest -v -rxXfE --ci --max-examples=100 --derandomize --disable-deadline array_api_tests/
+          pytest -v -rxXfE array_api_tests/
