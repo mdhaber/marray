@@ -121,4 +121,5 @@ jobs:
 
       - name: Run the test suite
         run: |
+          cd ${GITHUB_WORKSPACE}/array-api-tests
           pytest -v -rxXfE array_api_tests/
