@@ -1,0 +1,34 @@
+name: Docs Deploy
+
+on:
+  workflow_run:
+    workflows: ["Docs Build"]
+    types: [completed]
+    branches:
+      - "main"
+
+jobs:
+  docs-deploy:
+    runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.event == 'push' }}
+    environment:
+      name: docs-deploy
+    steps:
+      - name: Checkout the repository
+      - uses: actions/checkout@v4
+
+      - name: Download Artifact
+        uses: dawidd6/action-download-artifact@v7
+        with:
+          workflow: docs-build.yml
+          name: docs-build
+          path: mybook/_build/html
+
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GH_TOKEN }}
+          publish_dir: ./mybook/_build/html # Path to the build directory
+          publish_branch: gh-pages # The branch where the book will be deployed
+          user_name: "Matt Haberland"
+          user_email: "mhaberla@calpoly.edu"
