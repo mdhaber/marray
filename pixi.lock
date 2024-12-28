@@ -2720,7 +2720,7 @@ packages:
 - pypi: .
   name: marray
   version: 0.0.5
-  sha256: b36063f8990a9b25b09e416faabfed9edf32605968b6412d08910158efe74a92
+  sha256: a43cb4ed0de73f8e7634773e29b0f17b4617996012801296e8e1a088b6eb4b1e
   requires_dist:
   - jupyter-book ; extra == 'docs'
   - ghp-import ; extra == 'docs'
