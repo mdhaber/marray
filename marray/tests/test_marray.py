@@ -938,6 +938,6 @@ def test_gh33():
     test_array_binary(array_binary[0], dtype='float32', xp=np, seed=566)
 
 def test_test():
-    seed = 45335097813792896747784933871218135132
+    seed = 6683004726273775608254816605129298715
     # f_name, descending, stable, dtype, xp,
-    test_sorting('sort', True, True, dtype='uint8', xp=strict, seed=seed)
+    test_sorting('sort', False, False, dtype='uint64', xp=strict, seed=seed)

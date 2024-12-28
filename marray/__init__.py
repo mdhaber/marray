@@ -450,7 +450,8 @@ def get_namespace(xp):
             x = asarray(x)
             data = xp.asarray(x.data, copy=True)
             sentinel = _xinfo(x).min if descending else _xinfo(x).max
-            if xp.any(x.mask) and xp.any((data == sentinel) & ~x.mask):
+            any_masked = xp.any(x.mask)
+            if any_masked and xp.any((data == sentinel) & ~x.mask):
                 minmax = "minimum" if descending else "maximum"
                 message = (f"The {minmax} value of the data's dtype is included in the "
                            "non-masked data; this complicates sorting when values "
@@ -461,7 +462,7 @@ def get_namespace(xp):
             fun = getattr(xp, name)
             kwargs = {'descending': True} if descending else {}
             res = fun(data, axis=axis, stable=stable, **kwargs)
-            mask = (res == sentinel) if name=='sort' else None
+            mask = (res == sentinel) if (name=='sort') and any_masked else None
             return MArray(res, mask)
         return sort_fun
 
