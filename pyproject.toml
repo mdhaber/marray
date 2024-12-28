@@ -133,7 +133,9 @@ xp-tests.cmd = [
   "-v",
   "-rxXfE",
   "-W",
+  # https://github.com/data-apis/array-api-tests/issues/284
   "ignore::UserWarning",
+  # https://github.com/data-apis/array-api-tests/issues/329
   "--disable-extension",
   "fft",
   "--disable-extension",
