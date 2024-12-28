@@ -5,7 +5,6 @@
 array library.
 
 Install with `pip`.
-
 ```shell
 pip install marray
 ```
@@ -32,5 +31,5 @@ In the spirit of the [Zen of Python](https://peps.python.org/pep-0020/), this is
 and only obvious way to set the mask of an array.
 
 Documentation provided by attributes of `xp` are exposed in the `mxp`
-namespace and are accessible via `help`. For more information, please see
+namespace and are accessible via `help`. For more information, please see 
 [the tutorial](https://colab.research.google.com/drive/1LaZCK3jvnf40qEjWEhqhhc5e8IWy7vuo?usp=sharing).

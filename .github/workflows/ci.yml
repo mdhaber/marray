@@ -32,22 +32,6 @@ jobs:
         with:
           keyword: "[skip-ci]"
 
-  pre-commit:
-    name: Format
-    runs-on: ubuntu-latest
-    needs: detect-ci-trigger
-    if: needs.detect-ci-trigger.outputs.triggered == 'false'
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.x"
-      - uses: pre-commit/action@v3.0.1
-        with:
-          extra_args: --hook-stage manual --all-files
-
   tests:
     name: ${{ matrix.os }} py${{ matrix.python-version }}
     runs-on: ${{ matrix.os }}

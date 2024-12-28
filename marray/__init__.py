@@ -4,11 +4,10 @@ Masked versions of array API compatible arrays
 
 __version__ = "0.0.5"
 
-import dataclasses
-import inspect
-import sys
 import types
-
+import sys
+import inspect
+import dataclasses
 
 def get_namespace(xp):
     """Returns a masked array namespace for an Array API Standard compatible backend
