@@ -1,4 +1,0 @@
-numpy
-array-api-strict
-pytest
-pytest-cov
