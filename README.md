@@ -1,4 +1,8 @@
-# MArray
+<a href="https://mdhaber.github.io/marray">
+  <img src="https://github.com/mdhaber/marray/blob/main/mybook/logo.svg" alt="Logo" width="110" height="110" align="left" />
+</a>
+
+[![PyPI Downloads](https://img.shields.io/pypi/dm/marray.svg?label=Pypi%20downloads)](https://pypi.org/project/marray/)
 
 MArray[^1] adds masks to your favorite
 [Python Array API Standard compatible](https://data-apis.org/array-api/latest/)
