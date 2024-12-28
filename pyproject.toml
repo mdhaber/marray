@@ -2,11 +2,6 @@
 requires = ["flit_core >=3.2,<4"]
 build-backend = "flit_core.buildapi"
 
-[tool.flit.metadata]
-module = "MArray"
-author = "Matt Haberland"
-author-email = "mhaberla@calpoly.edu"
-
 [tool.flit.dependencies]
 jupyter-book = "^0.12"  # Required for building the Jupyter Book
 ghp-import = "^2.0"     # Required for deployment
