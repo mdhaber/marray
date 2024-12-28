@@ -37,6 +37,7 @@ jobs:
     - name: Deploy to GitHub Pages
       uses: peaceiris/actions-gh-pages@v3
       with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}
         publish_dir: ./mybook/_build/html  # Path to the build directory
         publish_branch: gh-pages  # The branch where the book will be deployed
         user_name: 'Matt Haberland'
