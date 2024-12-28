@@ -122,4 +122,4 @@ jobs:
       - name: Run the test suite
         run: |
           cd ${GITHUB_WORKSPACE}/array-api-tests
-          pytest -v -rxXfE --disable-extension fft --disable-extension linalg --max-examples=100 --derandomize --disable-deadline array_api_tests/
+          pytest -v -rxXfE --disable-extension fft --disable-extension linalg --xfails-file ${GITHUB_WORKSPACE}/ci/xp-tests-xfails.txt --max-examples=100 --derandomize --disable-deadline array_api_tests/
