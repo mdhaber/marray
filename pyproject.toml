@@ -102,6 +102,16 @@ pre-commit-install = "pre-commit install"
 pre-commit = "pre-commit run --all-files"
 lint = { depends-on = ["pre-commit"] }
 
+[tool.pixi.feature.docs.dependencies]
+jupyter-book = "*"
+ghp-import = "*"
+
+[tool.pixi.feature.docs.tasks]
+docs = { cmd = "jupyter-book build mybook/", cwd = "." }
+open-docs.cmd = "open mybook/_build/html/index.html"
+open-docs.cwd = "."
+open-docs.depends-on = ["docs"]
+
 [tool.pixi.feature.py310.dependencies]
 python = "~=3.10.0"
 
@@ -110,7 +120,8 @@ python = "~=3.13.0"
 
 [tool.pixi.environments]
 default = { solve-group = "default" }
-dev = { features = ["tests", "lint"], solve-group = "default" }
+dev = { features = ["tests", "lint", "docs"], solve-group = "default" }
+docs = { features = ["docs"], solve-group = "default" }
 ci-py310 = { features = ["py310", "tests"] }
 ci-py313 = { features = ["py313", "tests"] }
 pypi-test-extra = ["test"]
