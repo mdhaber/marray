@@ -561,14 +561,17 @@ def test_statistical_array(f_name, keepdims, xp, dtype, seed=None):
     axis = axes[rng.integers(len(axes))]
     f = getattr(mxp, f_name)
     f2 = getattr(np.ma, f_name2)
+    f3 = getattr(np, f_name2)
     res = f(marrays[0], axis=axis, **kwargs)
     ref = f2(masked_arrays[0], axis=axis, **kwargs)
+    # masked array dtypes are not correct
+    ref_dtype = f3(masked_arrays[0].data, axis=axis, **kwargs).dtype
 
     # `argmin`/`argmax` don't calculate mask correctly
     ref_mask = np.all(masked_arrays[0].mask, axis=axis, **kwargs)
     ref = np.ma.masked_array(ref.data, getattr(ref, 'mask', ref_mask))
-    strict = ref.shape != ()  # dtype of ref is wrong for scalar
-    assert_allclose(res, ref, xp=xp, seed=seed, strict=strict)
+    ref = ref.astype(ref_dtype)
+    assert_allclose(res, ref, xp=xp, seed=seed, strict=True, rtol=get_rtol(dtype, xp))
 
 
 # Test Creation functions
@@ -925,5 +928,5 @@ def test_gh33():
     test_array_binary(array_binary[0], dtype='float32', xp=np, seed=566)
 
 def test_test():
-    seed = 87597311899020256922680472523907945305
-    test_statistical_array('max', True, dtype='int8', xp=np, seed=seed)
+    seed = 331832801073772707313733761320981895052
+    test_statistical_array('mean', False, dtype='float32', xp=strict, seed=seed)
