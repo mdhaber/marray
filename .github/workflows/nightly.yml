@@ -50,40 +50,21 @@ jobs:
     strategy:
       fail-fast: false
 
-      matrix:
-        python-version: ["3.12"]
-
     steps:
       - name: Clone repository
         uses: actions/checkout@v4
 
-      - name: Setup environment
-        uses: actions/setup-python@v5
+      - uses: prefix-dev/setup-pixi@v0.8.1
         with:
-          python-version: "${{ matrix.python-version }}"
-          cache: "pip"
-
-      - name: Install dependencies
-        run: |
-          python -m pip install -r ci/requirements/environment.txt
-
-      - name: Install upstream versions
-        run: |
-          bash ci/install-upstream-wheels.sh
-
-      - name: Install marray
-        run: |
-          python -m pip install --no-deps -e .
-
-      - name: Import marray
-        run: |
-          python -c "import marray"
+          pixi-version: v0.39.4
+          cache: true
+          environments: ci-upstream-dev
 
       - name: Run tests
         if: success()
         id: run-tests
         run: |
-          python -m pytest --report-log output-${{ matrix.python-version }}-log.jsonl
+          pixi run --environment=ci-upstream-dev tests-log
 
       - name: Generate and publish a failure report
         if: |
@@ -93,4 +74,4 @@ jobs:
           && github.repository_owner == 'xarray-contrib'
         uses: xarray-contrib/issue-from-pytest-log@v1
         with:
-          log-path: output-${{ matrix.python-version }}-log.jsonl
+          log-path: output-log.jsonl
