@@ -95,6 +95,8 @@ def get_namespace(xp):
                 message = ("Correct behavior for indexing with a masked array is "
                            "ambiguous, and no convention is supported at this time.")
                 raise NotImplementedError(message)
+            elif hasattr(key, 'mask'):
+                key = key.data
             return MArray(self.data[key], self.mask[key])
 
         def __setitem__(self, key, other):
@@ -102,6 +104,8 @@ def get_namespace(xp):
                 message = ("Correct behavior for indexing with a masked array is "
                            "ambiguous, and no convention is supported at this time.")
                 raise NotImplementedError(message)
+            elif hasattr(key, 'mask'):
+                key = key.data
             self.mask[key] = getattr(other, 'mask', False)
             return self.data.__setitem__(key, getattr(other, 'data', other))
 
@@ -331,11 +335,11 @@ def get_namespace(xp):
             data1[x1.mask] = 0
             data2[x2.mask] = 0
             fun = getattr(xp, name)
-            data = fun(data1, data2)
+            data = fun(data1, data2, **kwargs)
             # Strict array can't do arithmetic with booleans
             # mask = ~fun(~x1.mask, ~x2.mask)
             mask = fun(xp.astype(~x1.mask, xp.uint64),
-                       xp.astype(~x2.mask, xp.uint64))
+                       xp.astype(~x2.mask, xp.uint64), **kwargs)
             mask = ~xp.astype(mask, xp.bool)
             return MArray(data, mask)
         return linalg_fun
@@ -361,6 +365,17 @@ def get_namespace(xp):
 
             fun = getattr(xp, name)
 
+            if name == "repeat":
+                args = list(args)
+                repeats = args[0]
+                if hasattr(repeats, 'mask') and xp.any(repeats.mask):
+                    message = ("Correct behavior when `repeats` is a masked array is "
+                               "ambiguous, and no convention is supported at this time.")
+                    raise NotImplementedError(message)
+                elif hasattr(repeats, 'mask'):
+                    repeats = repeats.data
+                args[0] = repeats
+
             if name in {'broadcast_arrays', 'meshgrid'}:
                 res = fun(*data, *args, **kwargs)
                 mask = fun(*mask, *args, **kwargs)
@@ -369,7 +384,7 @@ def get_namespace(xp):
                 mask = fun(mask, *args, **kwargs)
 
             out = (MArray(res, mask) if name not in output_arrays
-                   else [MArray(resi, maski) for resi, maski in zip(res, mask)])
+                   else tuple(MArray(resi, maski) for resi, maski in zip(res, mask)))
             return out
         return manip_fun
 
@@ -484,10 +499,21 @@ def get_namespace(xp):
 
     def cumulative_sum(x, *args, **kwargs):
         x = asarray(x)
+        axis = kwargs.get('axis', None)
+        if axis is None:
+            x = mod.reshape(x, -1)
+
         data = xp.asarray(x.data, copy=True)
-        data[x.mask] = 0
+        mask = x.mask
+        data[mask] = 0
         res = xp.cumulative_sum(data, *args, **kwargs)
-        return MArray(res, x.mask)
+
+        if kwargs.get('include_initial', False):
+            # get `false` of the correct dimensionality to prepend
+            false = xp.astype(xp.take(res, xp.asarray([0]), axis=axis), xp.bool)
+            mask = xp.concat((false, mask), axis=axis)
+
+        return MArray(res, mask)
 
     def mean(x, axis=None, keepdims=False):
         s = mod.sum(x, axis=axis, keepdims=keepdims)
