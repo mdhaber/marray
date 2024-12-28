@@ -95,6 +95,8 @@ def get_namespace(xp):
                 message = ("Correct behavior for indexing with a masked array is "
                            "ambiguous, and no convention is supported at this time.")
                 raise NotImplementedError(message)
+            elif hasattr(key, 'mask'):
+                key = key.data
             return MArray(self.data[key], self.mask[key])
 
         def __setitem__(self, key, other):
@@ -102,6 +104,8 @@ def get_namespace(xp):
                 message = ("Correct behavior for indexing with a masked array is "
                            "ambiguous, and no convention is supported at this time.")
                 raise NotImplementedError(message)
+            elif hasattr(key, 'mask'):
+                key = key.data
             self.mask[key] = getattr(other, 'mask', False)
             return self.data.__setitem__(key, getattr(other, 'data', other))
 
