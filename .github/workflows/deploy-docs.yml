@@ -1,0 +1,44 @@
+name: Deploy Jupyter Book to GitHub Pages
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout the repository
+      uses: actions/checkout@v2
+
+    - name: Set up Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: '3.10'
+
+    - name: Install flit and dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install flit
+        flit install  # Install the package itself, if needed
+
+    - name: Install Jupyter Book and ghp-import
+      run: |
+        pip install jupyter-book ghp-import  # Install the Jupyter Book and deployment tool
+
+    - name: Build the Jupyter Book
+      run: jupyter-book build mybook/
+
+    - name: Deploy to GitHub Pages
+      uses: peaceiris/actions-gh-pages@v3
+      with:
+        github_token: ${{ secrets.GH_TOKEN }}
+        publish_dir: ./mybook/_build/html  # Path to the build directory
+        publish_branch: gh-pages  # The branch where the book will be deployed
+        user_name: 'Matt Haberland'
+        user_email: 'mhaberla@calpoly.edu'

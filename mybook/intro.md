@@ -1,8 +1,4 @@
-<a href="https://mdhaber.github.io/marray">
-  <img src="https://github.com/mdhaber/marray/blob/main/mybook/logo.svg" alt="Logo" width="110" height="110" align="left" />
-</a>
-
-[![PyPI Downloads](https://img.shields.io/pypi/dm/marray.svg?label=Pypi%20downloads)](https://pypi.org/project/marray/)
+# MArray
 
 MArray[^1] adds masks to your favorite
 [Python Array API Standard compatible](https://data-apis.org/array-api/latest/)
@@ -37,6 +33,6 @@ and only obvious way to set the mask of an array.
 
 Documentation provided by attributes of `xp` are exposed in the `mxp`
 namespace and are accessible via `help`. For more information, please see
-[the tutorial](https://mdhaber.github.io/marray/tutorial.html).
+[the tutorial](https://colab.research.google.com/drive/1LaZCK3jvnf40qEjWEhqhhc5e8IWy7vuo?usp=sharing).
 
 [^1]: The MArray logo is a nod to NumPy, but MArray is not affiliated with the NumPy project.
