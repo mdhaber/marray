@@ -194,4 +194,3 @@ ci-py310 = { features = ["py310", "tests", "xp-tests"] }
 ci-py313 = { features = ["py313", "tests", "xp-tests"] }
 ci-upstream-dev = { features = ["test-upstream-dev"] }
 pypi-test-extra = ["test"]
-pypi-docs-extra = ["docs"]
