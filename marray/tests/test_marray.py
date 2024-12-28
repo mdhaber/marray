@@ -310,10 +310,10 @@ def test_indexing(xp):
     # `__setitem__` can change mask
     x[1] = mxp.asarray(30, mask=False)
     assert x[1].data == 30
-    assert not xp.any(x[1].mask)
+    assert x[1].mask == xp.asarray(False)
     x[2] = mxp.asarray(40, mask=True)
     assert x[2].data == 40
-    assert not xp.any(x[2].mask)
+    assert x[2].mask == xp.asarray(True)
 
     # Indexing with masked array is not allowed
     message = "Correct behavior for indexing with a masked array..."
