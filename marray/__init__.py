@@ -269,6 +269,7 @@ def get_namespace(xp):
     def astype(x, dtype, /, *, copy=True, device=None):
         if device is None and not copy and dtype == x.dtype:
             return x
+        x = asarray(x)
         data = xp.astype(x.data, dtype, copy=copy, device=device)
         mask = xp.astype(x.mask, xp.bool, copy=copy, device=device)
         return MArray(data, mask=mask)
@@ -490,7 +491,8 @@ def get_namespace(xp):
 
     def mean(x, axis=None, keepdims=False):
         s = mod.sum(x, axis=axis, keepdims=keepdims)
-        n = mod.count(x, axis=axis, keepdims=keepdims)
+        dtype = xp.uint64 if xp.isdtype(s.dtype, ("bool", "integral")) else s.dtype
+        n = mod.astype(mod.count(x, axis=axis, keepdims=keepdims), dtype)
         return s / n
 
     def var(x, axis=None, correction=0, keepdims=False):
@@ -498,7 +500,8 @@ def get_namespace(xp):
         xm = x - m
         xmc = mod.conj(xm) if mod.isdtype(xm.dtype, 'complex floating') else xm
         s = mod.sum(xm*xmc, axis=axis, keepdims=keepdims)
-        n = mod.count(x, axis=axis, keepdims=keepdims)
+        dtype = xp.uint64 if xp.isdtype(s.dtype, ("bool", "integral")) else s.dtype
+        n = mod.astype(mod.count(x, axis=axis, keepdims=keepdims), dtype)
         out = s / (n - correction)
         out = mod.real(out) if mod.isdtype(xm.dtype, 'complex floating') else out
         return out
