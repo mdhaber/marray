@@ -365,6 +365,17 @@ def get_namespace(xp):
 
             fun = getattr(xp, name)
 
+            if name == "repeat":
+                args = list(args)
+                repeats = args[0]
+                if hasattr(repeats, 'mask') and xp.any(repeats.mask):
+                    message = ("Correct behavior when `repeats` is a masked array is "
+                               "ambiguous, and no convention is supported at this time.")
+                    raise NotImplementedError(message)
+                elif hasattr(repeats, 'mask'):
+                    repeats = repeats.data
+                args[0] = repeats
+
             if name in {'broadcast_arrays', 'meshgrid'}:
                 res = fun(*data, *args, **kwargs)
                 mask = fun(*mask, *args, **kwargs)
