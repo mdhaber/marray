@@ -335,11 +335,11 @@ def get_namespace(xp):
             data1[x1.mask] = 0
             data2[x2.mask] = 0
             fun = getattr(xp, name)
-            data = fun(data1, data2)
+            data = fun(data1, data2, **kwargs)
             # Strict array can't do arithmetic with booleans
             # mask = ~fun(~x1.mask, ~x2.mask)
             mask = fun(xp.astype(~x1.mask, xp.uint64),
-                       xp.astype(~x2.mask, xp.uint64))
+                       xp.astype(~x2.mask, xp.uint64), **kwargs)
             mask = ~xp.astype(mask, xp.bool)
             return MArray(data, mask)
         return linalg_fun
