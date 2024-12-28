@@ -171,5 +171,8 @@ cython_debug/
 .pixi
 *.egg-info
 
+# array-api-tests
+array-api-tests/
+
 # test log
 output-log.jsonl
