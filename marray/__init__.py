@@ -488,10 +488,21 @@ def get_namespace(xp):
 
     def cumulative_sum(x, *args, **kwargs):
         x = asarray(x)
+        axis = kwargs.get('axis', None)
+        if axis is None:
+            x = mod.reshape(x, -1)
+
         data = xp.asarray(x.data, copy=True)
-        data[x.mask] = 0
+        mask = x.mask
+        data[mask] = 0
         res = xp.cumulative_sum(data, *args, **kwargs)
-        return MArray(res, x.mask)
+
+        if kwargs.get('include_initial', False):
+            # get `false` of the correct dimensionality to prepend
+            false = xp.astype(xp.take(res, xp.asarray([0]), axis=axis), xp.bool)
+            mask = xp.concat((false, mask), axis=axis)
+
+        return MArray(res, mask)
 
     def mean(x, axis=None, keepdims=False):
         s = mod.sum(x, axis=axis, keepdims=keepdims)
