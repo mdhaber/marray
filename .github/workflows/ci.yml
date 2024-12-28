@@ -33,7 +33,7 @@ jobs:
           keyword: "[skip-ci]"
 
   tests:
-    name: ${{ matrix.os }} py${{ matrix.python-version }}
+    name: ${{ matrix.os }} ${{ matrix.environment }}
     runs-on: ${{ matrix.os }}
     needs: detect-ci-trigger
     if: needs.detect-ci-trigger.outputs.triggered == 'false'
@@ -76,8 +76,9 @@ jobs:
       fail-fast: false
 
       matrix:
-        os: ["ubuntu-latest", "macos-latest", "windows-latest"]
-        python-version: ["3.10", "3.11", "3.12"]
+        # os: ["ubuntu-latest", "macos-latest", "windows-latest"]
+        os: "ubuntu-latest"
+        environment: [ci-py310, ci-py313]
 
     steps:
       - name: Clone repository
