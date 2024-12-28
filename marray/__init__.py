@@ -373,7 +373,7 @@ def get_namespace(xp):
                 mask = fun(mask, *args, **kwargs)
 
             out = (MArray(res, mask) if name not in output_arrays
-                   else [MArray(resi, maski) for resi, maski in zip(res, mask)])
+                   else tuple(MArray(resi, maski) for resi, maski in zip(res, mask)))
             return out
         return manip_fun
 
