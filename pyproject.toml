@@ -4,9 +4,9 @@ build-backend = "flit_core.buildapi"
 
 [project]
 name = "marray"
-authors = [{name = "Matt Haberland", email = "mhaberla@calpoly.edu"}]
+authors = [{ name = "Matt Haberland", email = "mhaberla@calpoly.edu" }]
 readme = "README.md"
-license = {file = "LICENSE"}
+license = { file = "LICENSE" }
 classifiers = [
   "License :: OSI Approved :: MIT License",
   "Programming Language :: Python :: 3.10",
@@ -18,7 +18,7 @@ dependencies = []
 requires-python = ">=3.10"
 
 [project.optional-dependencies]
-test = ["numpy", "pytest"]
+test = ["numpy", "pytest", "pytest-cov", "array-api-strict"]
 
 [project.urls]
 Home = "https://github.com/mdhaber/marray"
@@ -66,10 +66,10 @@ exclude_lines = ["pragma: no cover", "if TYPE_CHECKING"]
 
 [tool.pytest.ini_options]
 filterwarnings = [
-    "error",
-    "ignore:invalid value encountered:RuntimeWarning",
-    "ignore:divide by zero encountered:RuntimeWarning",
-    "ignore:overflow encountered:RuntimeWarning",
+  "error",
+  "ignore:invalid value encountered:RuntimeWarning",
+  "ignore:divide by zero encountered:RuntimeWarning",
+  "ignore:overflow encountered:RuntimeWarning",
 ]
 
 [tool.pixi.project]
