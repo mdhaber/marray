@@ -16,7 +16,7 @@ jobs:
           environments: docs
 
       - name: Build docs
-        run: pixi r --environment=docs docs
+        run: pixi run --environment=docs docs
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4

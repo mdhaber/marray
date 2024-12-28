@@ -22,7 +22,7 @@ jobs:
         with:
           workflow: docs-build.yml
           name: docs-build
-          path: /mybook/_build/html
+          path: mybook/_build/html
 
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3
@@ -32,12 +32,3 @@ jobs:
           publish_branch: gh-pages # The branch where the book will be deployed
           user_name: "Matt Haberland"
           user_email: "mhaberla@calpoly.edu"
-
-      # Note, the gh-pages deployment requires setting up a SSH deploy key.
-      # See
-      # https://github.com/JamesIves/github-pages-deploy-action/tree/dev#using-an-ssh-deploy-key-
-      # - name: Deploy
-      #   uses: JamesIves/github-pages-deploy-action@v4
-      #   with:
-      #     folder: /mybook/_build/html
-      #     ssh-key: ${{ secrets.DEPLOY_KEY }}
