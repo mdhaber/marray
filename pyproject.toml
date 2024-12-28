@@ -2,10 +2,6 @@
 requires = ["flit_core >=3.2,<4"]
 build-backend = "flit_core.buildapi"
 
-[tool.flit.dependencies]
-jupyter-book = "^0.12"  # Required for building the Jupyter Book
-ghp-import = "^2.0"     # Required for deployment
-
 [project]
 name = "marray"
 authors = [{ name = "Matt Haberland", email = "mhaberla@calpoly.edu" }]
@@ -18,11 +14,11 @@ classifiers = [
   "Programming Language :: Python :: 3.12",
 ]
 dynamic = ["version", "description"]
-dependencies = []
 requires-python = ">=3.10"
 
 [project.optional-dependencies]
 test = ["numpy", "pytest", "pytest-cov", "array-api-strict"]
+docs = ["jupyter-book", "ghp-import"]
 
 [project.urls]
 Home = "https://github.com/mdhaber/marray"
