@@ -22,4 +22,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: docs-build
-          path: /mybook/_build/html
+          path: mybook/_build/html
