@@ -36,3 +36,9 @@ array_api_tests/test_has_names.py::test_has_names[linalg-tensordot]
 array_api_tests/test_has_names.py::test_has_names[linalg-trace]
 array_api_tests/test_has_names.py::test_has_names[linalg-vecdot]
 array_api_tests/test_has_names.py::test_has_names[linalg-vector_norm]
+# marray does not correctly define `unique_` functions or `__dlpack__ yet`
+array_api_tests/test_set_functions.py::test_unique_all
+array_api_tests/test_set_functions.py::test_unique_counts
+array_api_tests/test_set_functions.py::test_unique_inverse
+array_api_tests/test_set_functions.py::test_unique_values
+array_api_tests/test_signatures.py::test_array_method_signature[__dlpack__]

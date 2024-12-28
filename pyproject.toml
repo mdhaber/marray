@@ -124,7 +124,7 @@ checkout-xp-tests.cmd = [
 checkout-xp-tests.cwd = "array-api-tests"
 checkout-xp-tests.depends-on = ["clone-xp-tests"]
 # apply patch to test marray
-patch-xp-tests.cmd = "git apply ../ci/xp-tests.patch"
+patch-xp-tests.cmd = "git apply ../tools/xp-tests.patch"
 patch-xp-tests.cwd = "array-api-tests"
 patch-xp-tests.depends-on = ["checkout-xp-tests"]
 # run tests
@@ -141,7 +141,7 @@ xp-tests.cmd = [
   "--disable-extension",
   "linalg",
   "--xfails-file",
-  "../ci/xp-tests-xfails.txt",
+  "../tools/xp-tests-xfails.txt",
   "--max-examples=100",
   "--derandomize",
   "--disable-deadline",
