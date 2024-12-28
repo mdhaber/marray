@@ -33,7 +33,7 @@ jobs:
           keyword: "[skip-ci]"
 
   tests:
-    name: ${{ matrix.os }} py${{ matrix.python-version }}
+    name: ${{ matrix.os }} ${{ matrix.environment }}
     runs-on: ${{ matrix.os }}
     needs: detect-ci-trigger
     if: needs.detect-ci-trigger.outputs.triggered == 'false'
@@ -60,9 +60,8 @@ jobs:
           cache: true
           environments: ${{ matrix.environment }}
 
-      - name: Import marray
-        run: |
-          pixi run -e ${{ matrix.environment }} python -c "import marray"
-
-      - name: Test package
+      - name: Run marray tests
         run: pixi run -e ${{ matrix.environment }} tests-cov
+
+      - name: Run array-api-tests
+        run: pixi run -e ${{ matrix.environment }} xp-tests

@@ -12,6 +12,7 @@ classifiers = [
   "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
 ]
 dynamic = ["version", "description"]
 requires-python = ">=3.10"
@@ -94,6 +95,61 @@ tests-cov = "pytest -v -ra --cov=marray --cov-report=xml --cov-report=term --dur
 coverage = { cmd = "coverage html", depends-on = ["tests-cov"] }
 open-coverage = { cmd = "open htmlcov/index.html", depends-on = ["coverage"] }
 
+[tool.pixi.feature.xp-tests.dependencies]
+pytest = "*"
+pytest-json-report = "*"
+hypothesis = "*"
+ndindex = "*"
+array-api-strict = "*"
+
+[tool.pixi.feature.xp-tests.tasks]
+# clean array-api-tests dir
+clean-xp-tests = { cwd = ".", cmd = "rm -rf array-api-tests" }
+# clone array-api-tests
+clone-xp-tests.cmd = "git clone https://github.com/data-apis/array-api-tests.git"
+clone-xp-tests.cwd = "."
+clone-xp-tests.depends-on = ["clean-xp-tests"]
+# checkout array-api-tests commit
+checkout-xp-tests.cmd = [
+  "git",
+  "reset",
+  "--hard",
+  "606cc4d11fbcb9abdf425ea6bfe21405228d1d89",
+  "&&",
+  "git",
+  "submodule",
+  "update",
+  "--init",
+]
+checkout-xp-tests.cwd = "array-api-tests"
+checkout-xp-tests.depends-on = ["clone-xp-tests"]
+# apply patch to test marray
+patch-xp-tests.cmd = "git apply ../tools/xp-tests.patch"
+patch-xp-tests.cwd = "array-api-tests"
+patch-xp-tests.depends-on = ["checkout-xp-tests"]
+# run tests
+xp-tests.cmd = [
+  "pytest",
+  "-v",
+  "-rxXfE",
+  "-W",
+  # https://github.com/data-apis/array-api-tests/issues/284
+  "ignore::UserWarning",
+  # https://github.com/data-apis/array-api-tests/issues/329
+  "--disable-extension",
+  "fft",
+  "--disable-extension",
+  "linalg",
+  "--xfails-file",
+  "../tools/xp-tests-xfails.txt",
+  "--max-examples=100",
+  "--derandomize",
+  "--disable-deadline",
+  "array_api_tests/",
+]
+xp-tests.cwd = "array-api-tests"
+xp-tests.depends-on = ["patch-xp-tests"]
+
 [tool.pixi.feature.lint.dependencies]
 pre-commit = "*"
 
@@ -134,9 +190,10 @@ pixi-pycharm = "*"
 
 [tool.pixi.environments]
 default = { solve-group = "default" }
-dev = { features = ["tests", "lint", "docs", "dev"], solve-group = "default" }
+dev.features = ["tests", "xp-tests", "lint", "docs", "dev"]
+dev.solve-group = "default"
 docs = { features = ["docs"], solve-group = "default" }
-ci-py310 = { features = ["py310", "tests"] }
-ci-py313 = { features = ["py313", "tests"] }
+ci-py310 = { features = ["py310", "tests", "xp-tests"] }
+ci-py313 = { features = ["py313", "tests", "xp-tests"] }
 ci-upstream-dev = { features = ["test-upstream-dev"] }
 pypi-test-extra = ["test"]
