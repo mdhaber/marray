@@ -834,13 +834,21 @@ def test_clip(dtype, xp, seed=None):
 @pytest.mark.parametrize("f_name", ['sort', 'argsort'])
 @pytest.mark.parametrize("descending", [False, True])
 @pytest.mark.parametrize("stable", [False, True])
-@pytest.mark.parametrize('dtype', dtypes_real + dtypes_int)
+@pytest.mark.parametrize('dtype', dtypes_real + dtypes_integral)
 @pytest.mark.parametrize('xp', xps)
 def test_sorting(f_name, descending, stable, dtype, xp, seed=None):
     mxp = marray.get_namespace(xp)
     marrays, masked_arrays, seed = get_arrays(1, dtype=dtype, xp=xp, seed=seed)
     f_mxp = getattr(mxp, f_name)
     f_xp = getattr(np.ma, f_name)
+
+    info = marray._xinfo(marrays[0])
+    sentinel = info.min if descending else info.max
+    if mxp.any(marrays[0] == sentinel) and xp.any(marrays[0].mask):
+        message = "value of the data's dtype is included"
+        with pytest.raises(NotImplementedError, match=message):
+            f_mxp(marrays[0], axis=-1, descending=descending, stable=stable)
+        return
 
     if descending and xp==np:
         pytest.skip("NumPy doesn't have `descending`.")
@@ -849,6 +857,9 @@ def test_sorting(f_name, descending, stable, dtype, xp, seed=None):
 
     if stable:
         pytest.skip("No easy reference for `stable=True`.")
+
+    if descending and dtype in dtypes_uint:
+        pytest.skip("No easy reference for unsigned int with `descending=True`.")
 
     if descending:
         ref = f_xp(-masked_arrays[0], axis=-1, stable=stable)
@@ -919,7 +930,6 @@ def test_signature_docs():
 # - Indexing (same behavior as indexing data and mask separately)
 # - Set functions (see https://github.com/mdhaber/marray/issues/28)
 # - investigate asarray - is copy respected?
-# - investigate test_sorting - what about uint dtypes?
 
 ### Bug-fix tests
 
@@ -928,5 +938,6 @@ def test_gh33():
     test_array_binary(array_binary[0], dtype='float32', xp=np, seed=566)
 
 def test_test():
-    seed = 331832801073772707313733761320981895052
-    test_statistical_array('mean', False, dtype='float32', xp=strict, seed=seed)
+    seed = 45335097813792896747784933871218135132
+    # f_name, descending, stable, dtype, xp,
+    test_sorting('sort', True, True, dtype='uint8', xp=strict, seed=seed)
