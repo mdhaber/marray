@@ -129,9 +129,12 @@ numpy = { version = "*", index = "https://pypi.anaconda.org/scientific-python-ni
 [tool.pixi.feature.test-upstream-dev.tasks]
 tests-log = "pytest --report-log output-log.jsonl"
 
+[tool.pixi.feature.dev.dependencies]
+pixi-pycharm = "*"
+
 [tool.pixi.environments]
 default = { solve-group = "default" }
-dev = { features = ["tests", "lint", "docs"], solve-group = "default" }
+dev = { features = ["tests", "lint", "docs", "dev"], solve-group = "default" }
 docs = { features = ["docs"], solve-group = "default" }
 ci-py310 = { features = ["py310", "tests"] }
 ci-py313 = { features = ["py313", "tests"] }
