@@ -1628,8 +1628,10 @@ packages:
 - pypi: .
   name: marray
   version: 0.0.5
-  sha256: 50816504c5adb6497dfb59bd4ae19bd683578cc6af4d09cb6eb9a481aae9c802
+  sha256: a7ab2ad50f92650aa2ae450a194c26ad0aa1e6974a981fd5e0ca1e313b9684d1
   requires_dist:
+  - jupyter-book ; extra == 'docs'
+  - ghp-import ; extra == 'docs'
   - numpy ; extra == 'test'
   - pytest ; extra == 'test'
   - pytest-cov ; extra == 'test'
