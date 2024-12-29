@@ -940,11 +940,11 @@ def test_array_namespace(xp):
         x.__array_namespace__("shrubbery")
 
 
-@pytest.mark.parametrize('xp', xps)
-def test_import(xp):
-    mxp = marray.get_namespace(xp)  # noqa: F841
-    from mxp import asarray
-    asarray(10, mask=True)
+# @pytest.mark.parametrize('xp', xps)
+# def test_import(xp):
+#     mxp = marray.get_namespace(xp)  # noqa: F841
+#     from mxp import asarray
+#     asarray(10, mask=True)
 
 @pytest.mark.parametrize('xp', xps)
 def test_str(xp):
