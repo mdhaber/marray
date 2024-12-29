@@ -454,7 +454,7 @@ def get_namespace(xp):
             if any_masked and xp.any((data == sentinel) & ~x.mask):
                 minmax = "minimum" if descending else "maximum"
                 message = (f"The {minmax} value of the data's dtype is included in the "
-                           "non-masked data; this complicates sorting when values "
+                           "non-masked data; this complicates sorting when masked values "
                            "are present. Consider promoting to another dtype to use "
                            f"`{name}`.")
                 raise NotImplementedError(message)
