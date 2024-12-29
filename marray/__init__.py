@@ -43,7 +43,7 @@ def get_namespace(xp):
 
             self._mask = mask
             self._xp = xp
-            self._sentinel = (info(self).max if not xp.isdtype(self.dtype, 'bool')
+            self._sentinel = (_xinfo(self).max if not xp.isdtype(self.dtype, 'bool')
                               else None)
 
         __array_priority__ = 1  # make reflected operators work with NumPy
@@ -207,16 +207,6 @@ def get_namespace(xp):
             self._call_super_method(name, other)
             return self
         setattr(MArray, name, fun)
-
-    def info(x):
-        xp = x._xp
-        if xp.isdtype(x.dtype, 'integral'):
-            return xp.iinfo(x.dtype)
-        elif xp.isdtype(x.dtype, 'bool'):
-            binfo = dataclasses.make_dataclass("binfo", ['min', 'max'])
-            return binfo(min=False, max=True)
-        else:
-            return xp.finfo(x.dtype)
 
     mod = types.ModuleType('mxp')
     sys.modules['mxp'] = mod
@@ -459,12 +449,20 @@ def get_namespace(xp):
         def sort_fun(x, /, *, axis=-1, descending=False, stable=True):
             x = asarray(x)
             data = xp.asarray(x.data, copy=True)
-            sentinel = info(x).min if descending else info(x).max
+            sentinel = _xinfo(x).min if descending else _xinfo(x).max
+            any_masked = xp.any(x.mask)
+            if any_masked and xp.any((data == sentinel) & ~x.mask):
+                minmax = "minimum" if descending else "maximum"
+                message = (f"The {minmax} value of the data's dtype is included in the "
+                           "non-masked data; this complicates sorting when masked values "
+                           "are present. Consider promoting to another dtype to use "
+                           f"`{name}`.")
+                raise NotImplementedError(message)
             data[x.mask] = sentinel
             fun = getattr(xp, name)
             kwargs = {'descending': True} if descending else {}
             res = fun(data, axis=axis, stable=stable, **kwargs)
-            mask = (res == sentinel) if name=='sort' else None
+            mask = (res == sentinel) if (name=='sort') and any_masked else None
             return MArray(res, mask)
         return sort_fun
 
@@ -475,12 +473,12 @@ def get_namespace(xp):
     ## Statistical Functions and Utility Functions ##
     def get_statistical_fun(name):
         def statistical_fun(x, *args, axis=None, name=name, **kwargs):
-            replacements = {'max': info(x).min,
-                            'min': info(x).max,
+            replacements = {'max': _xinfo(x).min,
+                            'min': _xinfo(x).max,
                             'sum': 0,
                             'prod': 1,
-                            'argmax': info(x).min,
-                            'argmin': info(x).max,
+                            'argmax': _xinfo(x).min,
+                            'argmin': _xinfo(x).max,
                             'all': xp.asarray(True),
                             'any': xp.asarray(False)}
             x = asarray(x)
@@ -577,3 +575,14 @@ def get_namespace(xp):
                 pass
 
     return mod
+
+
+def _xinfo(x):
+    xp = x._xp
+    if xp.isdtype(x.dtype, 'integral'):
+        return xp.iinfo(x.dtype)
+    elif xp.isdtype(x.dtype, 'bool'):
+        binfo = dataclasses.make_dataclass("binfo", ['min', 'max'])
+        return binfo(min=False, max=True)
+    else:
+        return xp.finfo(x.dtype)
