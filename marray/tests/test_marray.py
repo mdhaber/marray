@@ -815,7 +815,6 @@ def test_asarray_device(xp):
         mxp.asarray(xp.asarray([1, 2, 3]), device='coconut')
 
 
-
 @pytest.mark.parametrize('dtype', dtypes_all)
 @pytest.mark.parametrize('xp', xps)
 @pass_exceptions(allowed=["Only real numeric dtypes are allowed"])
@@ -829,6 +828,52 @@ def test_clip(dtype, xp, seed=None):
     max = np.ma.masked_array(max.data, mask=max.mask)
     ref = np.ma.clip(masked_arrays[0], min, max)
     assert_equal(res, ref, xp=xp, seed=seed)
+
+
+@pytest.mark.parametrize("f_name", ['unique_values', 'unique_counts',
+                                    'unique_inverse', 'unique_all'])
+@pytest.mark.parametrize('dtype', dtypes_all)
+@pytest.mark.parametrize('xp', xps)
+def test_set(f_name, dtype, xp, seed=None):
+    mxp = marray.get_namespace(xp)
+    marrays, _, seed = get_arrays(1, dtype=dtype, xp=xp, seed=seed)
+    f_mxp = getattr(mxp, f_name)
+
+    if not np.any(marrays[0].mask):
+        pytest.skip("Tested by array_api_tests.")
+
+    x = marrays[0]
+    data = x.data
+    mask = x.mask
+    sentinel = marray._xinfo(x).max
+
+    if mxp.any(x == sentinel):
+        message = "The maximum value of the data's dtype is included"
+        with pytest.raises(NotImplementedError, match=message):
+            f_mxp(x)
+        return
+
+    res = f_mxp(x)
+
+    data[mask] = sentinel
+    ref = xp.unique_all(data)
+    ref_mask = np.asarray((ref.values == sentinel))
+
+    ref_values = np.ma.masked_array(np.asarray(ref.values), mask=ref_mask)
+    res_values = res if f_name == "unique_values" else res.values
+    assert_equal(res_values, ref_values, xp=xp, seed=seed)
+
+    if hasattr(res, 'counts'):
+        ref_counts = np.ma.masked_array(np.asarray(ref.counts), mask=ref_mask)
+        assert_equal(res.counts, ref_counts, xp=xp, seed=seed)
+
+    if hasattr(res, 'indices'):
+        ref_counts = np.ma.masked_array(np.asarray(ref.indices), mask=ref_mask)
+        assert_equal(res.indices, ref_counts, xp=xp, seed=seed)
+
+    if hasattr(res, 'inverse_indices'):
+        ref_counts = np.ma.masked_array(np.asarray(ref.inverse_indices), mask=False)
+        assert_equal(res.inverse_indices, ref_counts, xp=xp, seed=seed)
 
 
 @pytest.mark.parametrize("f_name", ['sort', 'argsort'])
@@ -927,8 +972,6 @@ def test_signature_docs():
     assert np.sum.__doc__ in mxp.sum.__doc__
 
 # To do:
-# - Indexing (same behavior as indexing data and mask separately)
-# - Set functions (see https://github.com/mdhaber/marray/issues/28)
 # - investigate asarray - is copy respected?
 
 ### Bug-fix tests

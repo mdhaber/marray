@@ -4,6 +4,7 @@ Masked versions of array API compatible arrays
 
 __version__ = "0.0.5"
 
+import collections
 import dataclasses
 import inspect
 import sys
@@ -43,8 +44,6 @@ def get_namespace(xp):
 
             self._mask = mask
             self._xp = xp
-            self._sentinel = (_xinfo(self).max if not xp.isdtype(self.dtype, 'bool')
-                              else None)
 
         __array_priority__ = 1  # make reflected operators work with NumPy
 
@@ -428,16 +427,33 @@ def get_namespace(xp):
     ## Set Functions ##
     def get_set_fun(name):
         def set_fun(x, /):
-            # This seems a little inconsistent with nonzero and where, which
-            # completely ignore masked elements.
+            sentinel = _xinfo(x).max
+            any_masked = xp.any(x.mask)
+            if any_masked and xp.any((x.data == sentinel) & ~x.mask):
+                message = (f"The maximum value of the data's dtype is included in the "
+                           "non-masked data; this complicates the isolation of unique "
+                           "non-masked values when masked values are present. Consider "
+                           "promoting to another dtype to use `{name}`.")
+                raise NotImplementedError(message)
             x = asarray(x)
             data = xp.asarray(x.data, copy=True)
-            data[x.mask] = x._sentinel
+            data[x.mask] = sentinel
             fun = getattr(xp, name)
             res = fun(data)
-            # this sort of works but could be refined
-            return (MArray(res, res==x._sentinel) if name=='unique_values'
-                    else tuple(MArray(resi, resi==x._sentinel) for resi in res))
+            if name == 'unique_values':
+                return MArray(res, res == sentinel) if any_masked else MArray(res)
+
+            fields = res._fields
+            name_tuple = res.__class__.__name__
+            result_class = collections.namedtuple(name_tuple, fields)
+
+            mask = (res.values == sentinel) if any_masked else None
+            result_list = []
+            for res_i, field_i in zip(res, fields):
+                mask_i = None if field_i == 'inverse_indices' else mask
+                result_list.append(MArray(res_i, mask=mask_i))
+            return result_class(*result_list)
+
         return set_fun
 
     unique_names = ['unique_values', 'unique_counts', 'unique_inverse', 'unique_all']
