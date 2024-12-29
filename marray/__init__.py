@@ -437,6 +437,8 @@ def get_namespace(xp):
                 raise NotImplementedError(message)
             x = asarray(x)
             data = xp.asarray(x.data, copy=True)
+            # Replace masked elements with a sentinel value: they are all treated as
+            # the same as one another and distinct from all non-masked values.
             data[x.mask] = sentinel
             fun = getattr(xp, name)
             res = fun(data)
