@@ -111,6 +111,43 @@ Is it surprising that the mask of the array returned by `argsort` is all False? 
 y = x[i.data]
 y
 ```
+*Gotcha:* Sorting is not supported when the the non-masked data includes the maximum (minimum when `descending=True`) value of the data's `dtype`.
+
+```python
+z = mxp.asarray(x, mask=mask, dtype=mxp.uint8)
+z[0] = 2**8 - 1
+# mxp.sort(z)
+# NotImplementedError: The maximum value of the data's dtype is included in the non-masked data; this complicates sorting when masked values are present.
+# Consider promoting to another dtype to use `sort`.
+```
+
+It is often possible to sidestep this limitation by using a different `dtype` for the sorting, then converting back to the original type.
+
+```python
+z = mxp.astype(z, mxp.uint16)
+z_sorted = mxp.sort(z)
+z_sorted = mxp.astype(z_sorted, mxp.uint8)
+z_sorted
+```
+
+## Set functions
+Masked elements are treated as distinct from all non-masked elements but equivalent to all other masked elements.
+
+```python
+res = mxp.unique_counts(x)
+```
+
+```python
+res.values
+```
+
+```python
+res.counts
+```
+
+*Gotcha*: set functions have the same limitation as the sorting functions: the non-masked data may not include the maximum value of the data's `dtype`.
+
+
 ## Manipulation functions
 Manipulation functions perform the same operation on the data and the mask.
 

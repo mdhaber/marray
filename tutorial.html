@@ -364,6 +364,7 @@
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#statistical-functions">Statistical Functions</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#utility-functions">Utility functions</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#sorting-functions">Sorting functions</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#set-functions">Set functions</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#manipulation-functions">Manipulation functions</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#creation-functions">Creation functions</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#searching-functions">Searching functions</a></li>
@@ -469,6 +470,35 @@
 <span class="n">y</span>
 </pre></div>
 </div>
+<p><em>Gotcha:</em> Sorting is not supported when the the non-masked data includes the maximum (minimum when <code class="docutils literal notranslate"><span class="pre">descending=True</span></code>) value of the data’s <code class="docutils literal notranslate"><span class="pre">dtype</span></code>.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">z</span> <span class="o">=</span> <span class="n">mxp</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">mask</span><span class="o">=</span><span class="n">mask</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">mxp</span><span class="o">.</span><span class="n">uint8</span><span class="p">)</span>
+<span class="n">z</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="mi">2</span><span class="o">**</span><span class="mi">8</span> <span class="o">-</span> <span class="mi">1</span>
+<span class="c1"># mxp.sort(z)</span>
+<span class="c1"># NotImplementedError: The maximum value of the data&#39;s dtype is included in the non-masked data; this complicates sorting when masked values are present.</span>
+<span class="c1"># Consider promoting to another dtype to use `sort`.</span>
+</pre></div>
+</div>
+<p>It is often possible to sidestep this limitation by using a different <code class="docutils literal notranslate"><span class="pre">dtype</span></code> for the sorting, then converting back to the original type.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">z</span> <span class="o">=</span> <span class="n">mxp</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">z</span><span class="p">,</span> <span class="n">mxp</span><span class="o">.</span><span class="n">uint16</span><span class="p">)</span>
+<span class="n">z_sorted</span> <span class="o">=</span> <span class="n">mxp</span><span class="o">.</span><span class="n">sort</span><span class="p">(</span><span class="n">z</span><span class="p">)</span>
+<span class="n">z_sorted</span> <span class="o">=</span> <span class="n">mxp</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">z_sorted</span><span class="p">,</span> <span class="n">mxp</span><span class="o">.</span><span class="n">uint8</span><span class="p">)</span>
+<span class="n">z_sorted</span>
+</pre></div>
+</div>
+</section>
+<section id="set-functions">
+<h2>Set functions<a class="headerlink" href="#set-functions" title="Link to this heading">#</a></h2>
+<p>Masked elements are treated as distinct from all non-masked elements but equivalent to all other masked elements.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">res</span> <span class="o">=</span> <span class="n">mxp</span><span class="o">.</span><span class="n">unique_counts</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+</pre></div>
+</div>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">res</span><span class="o">.</span><span class="n">values</span>
+</pre></div>
+</div>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">res</span><span class="o">.</span><span class="n">counts</span>
+</pre></div>
+</div>
+<p><em>Gotcha</em>: set functions have the same limitation as the sorting functions: the non-masked data may not include the maximum value of the data’s <code class="docutils literal notranslate"><span class="pre">dtype</span></code>.</p>
 </section>
 <section id="manipulation-functions">
 <h2>Manipulation functions<a class="headerlink" href="#manipulation-functions" title="Link to this heading">#</a></h2>
@@ -653,6 +683,7 @@
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#statistical-functions">Statistical Functions</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#utility-functions">Utility functions</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#sorting-functions">Sorting functions</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#set-functions">Set functions</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#manipulation-functions">Manipulation functions</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#creation-functions">Creation functions</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#searching-functions">Searching functions</a></li>
