@@ -6,9 +6,20 @@ __version__ = "0.0.5"
 
 import collections
 import dataclasses
+import importlib
 import inspect
 import sys
 import types
+
+
+def __getattr__(name):
+    try:
+        xp = importlib.import_module(name)
+        mod = get_namespace(xp)
+        sys.modules[f"marray.{name}"] = mod
+        return mod
+    except ModuleNotFoundError as e:
+        raise AttributeError(str(e))
 
 
 def get_namespace(xp):
@@ -207,9 +218,9 @@ def get_namespace(xp):
             return self
         setattr(MArray, name, fun)
 
-    mod_name = f'mxp({xp.__name__})'
+    mod_name = f'marray.{xp.__name__})'
     mod = types.ModuleType(mod_name)
-    sys.modules['mod_name'] = mod
+    sys.modules[mod_name] = mod
 
     mod.MArray = MArray
 
