@@ -374,15 +374,15 @@ array library.</p>
 <div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>pip<span class="w"> </span>install<span class="w"> </span>marray
 </pre></div>
 </div>
-<p>The only public function is <code class="docutils literal notranslate"><span class="pre">get_namespace</span></code>:</p>
-<div class="highlight-python3 notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">xp</span>  <span class="c1"># use any Array API compatible library, installed separately</span>
-<span class="kn">import</span> <span class="nn">marray</span>
-<span class="n">mxp</span> <span class="o">=</span> <span class="n">marray</span><span class="o">.</span><span class="n">get_namespace</span><span class="p">(</span><span class="n">xp</span><span class="p">)</span>
+<p>Use the <code class="docutils literal notranslate"><span class="pre">from...import...as</span></code> syntax to get a masked array namespace.</p>
+<div class="highlight-python3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># use with any Array API compatible library, installed separately</span>
+<span class="kn">from</span> <span class="nn">marray</span> <span class="kn">import</span> <span class="n">numpy</span> <span class="k">as</span> <span class="n">mxp</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">xp</span>  <span class="c1"># optional (if the non-masked namespace is desired)</span>
 </pre></div>
 </div>
 <p>The resulting <code class="docutils literal notranslate"><span class="pre">mxp</span></code> namespace has all the features of <code class="docutils literal notranslate"><span class="pre">xp</span></code> that are specified
 in the Array API standard, but they are modified to be mask-aware. Typically, the
-signatures of functions in the <code class="docutils literal notranslate"><span class="pre">mxp</span></code> namespace match those in the <code class="docutils literal notranslate"><span class="pre">xp</span></code> namespace;
+signatures of functions in the <code class="docutils literal notranslate"><span class="pre">mxp</span></code> namespace match those in the standard;
 the one notable exception is the addition of a <code class="docutils literal notranslate"><span class="pre">mask</span></code> keyword argument of <code class="docutils literal notranslate"><span class="pre">asarray</span></code>.</p>
 <div class="highlight-python3 notranslate"><div class="highlight"><pre><span></span><span class="n">mxp</span><span class="o">.</span><span class="n">asarray</span><span class="p">([</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">],</span> <span class="n">mask</span><span class="o">=</span><span class="p">[</span><span class="kc">False</span><span class="p">,</span> <span class="kc">True</span><span class="p">,</span> <span class="kc">False</span><span class="p">])</span>
 <span class="c1"># MArray(array([1, 2, 3]), array([False,  True, False]))</span>
@@ -397,7 +397,7 @@ namespace and are accessible via <code class="docutils literal notranslate"><spa
 <aside class="footnote-list brackets">
 <aside class="footnote brackets" id="id2" role="note">
 <span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id1">1</a><span class="fn-bracket">]</span></span>
-<p>The MArray logo is a nod to NumPy, but MArray is not affiliated with the NumPy project.</p>
+<p>The MArray logo is a nod to NumPy’s logo, but MArray is not affiliated with the NumPy project.</p>
 </aside>
 </aside>
 <div class="toctree-wrapper compound">

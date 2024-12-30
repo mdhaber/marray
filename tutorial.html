@@ -401,12 +401,10 @@
 </div>
 </div>
 </div>
-<p>To create a version of the NumPy namespace with mask support, use <code class="docutils literal notranslate"><span class="pre">marray</span></code>’s only public attribute: <code class="docutils literal notranslate"><span class="pre">get_namespace</span></code>.</p>
+<p>To create a version of the NumPy namespace with mask support, use Python’s <code class="docutils literal notranslate"><span class="pre">from...import...as</span></code> syntax.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">xp</span>
-<span class="kn">import</span> <span class="nn">marray</span>
-<span class="n">mxp</span> <span class="o">=</span> <span class="n">marray</span><span class="o">.</span><span class="n">get_namespace</span><span class="p">(</span><span class="n">xp</span><span class="p">)</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">marray</span> <span class="kn">import</span> <span class="n">numpy</span> <span class="k">as</span> <span class="n">mxp</span>
 </pre></div>
 </div>
 </div>
@@ -759,7 +757,9 @@
 <p><code class="docutils literal notranslate"><span class="pre">tril</span></code> and <code class="docutils literal notranslate"><span class="pre">triu</span></code> also preserve the mask of the indicated triangular portion of the argument.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">data</span> <span class="o">=</span> <span class="n">xp</span><span class="o">.</span><span class="n">ones</span><span class="p">((</span><span class="mi">3</span><span class="p">,</span> <span class="mi">3</span><span class="p">))</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">xp</span>
+
+<span class="n">data</span> <span class="o">=</span> <span class="n">xp</span><span class="o">.</span><span class="n">ones</span><span class="p">((</span><span class="mi">3</span><span class="p">,</span> <span class="mi">3</span><span class="p">))</span>
 <span class="n">mask</span> <span class="o">=</span> <span class="n">xp</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
 <span class="n">mask</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span>
 <span class="n">mask</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span>
