@@ -165,7 +165,7 @@ def irshift(x, y): x >>= y
 inplace_bitwise = [iand, ior, ixor, ilshift, irshift]
 
 
-data_type_fun = ['can_cast', 'finfo', 'iinfo', 'isdtype', 'result_type']
+data_type_fun = ['can_cast', 'finfo', 'iinfo', 'result_type']
 inspection = ['__array_namespace_info__']
 version = ['__array_api_version__']
 elementwise_unary = ['abs', 'acos', 'acosh', 'asin', 'asinh', 'atan', 'atanh',
@@ -488,6 +488,7 @@ def test_finfo(dtype, xp, seed=None):
     mxp = marray._get_namespace(xp)
     marrays, _, _ = get_arrays(1, dtype=dtype, xp=xp, seed=seed)
     assert mxp.finfo(dtype) == xp.finfo(dtype)
+    # see numpy/numpy#22977, data_apis/array_api_strict#116
     # assert mxp.finfo(marrays[0]) == xp.finfo(dtype)
 
 
@@ -500,6 +501,7 @@ def test_iinfo(dtype, xp, seed=None):
     assert mxp.iinfo(dtype).max == xp.iinfo(dtype).max
     assert mxp.iinfo(dtype).min == xp.iinfo(dtype).min
     assert mxp.iinfo(dtype).bits == xp.iinfo(dtype).bits
+    # see numpy/numpy#22977, data_apis/array_api_strict#116
     # assert mxp.iinfo(marrays[0]).max == xp.iinfo(dtype).max
 
 
@@ -514,7 +516,7 @@ def test_can_cast_result_type(f_name, dtype1, dtype2, xp, seed=None):
     xp_fun = getattr(xp, f_name)
     marrays, _, _ = get_arrays(1, dtype=dtype1, xp=xp, seed=seed)
     ref = xp_fun(getattr(xp, dtype1), getattr(xp, dtype2))
-    if f_name == 'result_type' or xp == strict:
+    if f_name == 'result_type' or xp == strict:  # see numpy/numpy#22977
         res1 = mxp_fun(marrays[0], getattr(mxp, dtype2))
         assert res1 == ref
     res2 = mxp_fun(getattr(mxp, dtype1), getattr(mxp, dtype2))
