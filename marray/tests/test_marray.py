@@ -940,11 +940,16 @@ def test_array_namespace(xp):
         x.__array_namespace__("shrubbery")
 
 
-# @pytest.mark.parametrize('xp', xps)
-# def test_import(xp):
-#     mxp = marray.get_namespace(xp)  # noqa: F841
-#     from mxp import asarray
-#     asarray(10, mask=True)
+def test_import():
+    from marray import numpy as mnp
+    assert mnp.__name__ == 'marray.numpy'
+    from marray.numpy import asarray
+    asarray(10, mask=True)
+
+    from marray import array_api_strict as mxp
+    assert mxp.__name__ == 'marray.array_api_strict'
+    from marray.array_api_strict import asarray
+    asarray(10, mask=True)
 
 @pytest.mark.parametrize('xp', xps)
 def test_str(xp):

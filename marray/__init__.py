@@ -218,7 +218,7 @@ def get_namespace(xp):
             return self
         setattr(MArray, name, fun)
 
-    mod_name = f'marray.{xp.__name__})'
+    mod_name = f'marray.{xp.__name__}'
     mod = types.ModuleType(mod_name)
     sys.modules[mod_name] = mod
 
