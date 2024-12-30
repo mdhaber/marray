@@ -16,13 +16,11 @@ The rest of the tutorial will assume that we want to add masks to NumPy arrays. 
 # !pip install --upgrade numpy
 ```
 
-To create a version of the NumPy namespace with mask support, use `marray`'s only public attribute: `get_namespace`.
+To create a version of the NumPy namespace with mask support, use Python's `from...import...as` syntax.
 
 
 ```python
-import numpy as xp
-import marray
-mxp = marray.get_namespace(xp)
+from marray import numpy as mxp
 ```
 
 `mxp` exposes all the features of NumPy that are specified in the Array API standard, but adds masks support to them. For example:
@@ -172,6 +170,8 @@ mxp.zeros_like(y)
 `tril` and `triu` also preserve the mask of the indicated triangular portion of the argument.
 
 ```python
+import numpy as xp
+
 data = xp.ones((3, 3))
 mask = xp.zeros_like(data)
 mask[0, -1] = 1

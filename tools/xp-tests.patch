@@ -47,8 +47,8 @@ index 4e0c340..525782e 100644
 +
 +import marray
 +import array_api_strict
-+xp = marray.get_namespace(array_api_strict)
-+xp_name = "marray(array_api_strict)"
++xp = marray._get_namespace(array_api_strict)
++xp_name = "marray.array_api_strict"
  
  
  # If xp.bool is not available, like in some versions of NumPy and CuPy, try

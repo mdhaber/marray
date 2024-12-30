@@ -15,21 +15,21 @@ import types
 def __getattr__(name):
     try:
         xp = importlib.import_module(name)
-        mod = get_namespace(xp)
+        mod = _get_namespace(xp)
         sys.modules[f"marray.{name}"] = mod
         return mod
     except ModuleNotFoundError as e:
         raise AttributeError(str(e))
 
 
-def get_namespace(xp):
+def _get_namespace(xp):
     """Returns a masked array namespace for an Array API Standard compatible backend
 
     Examples
     --------
     >>> import numpy as xp
-    >>> from marray import get_namespace
-    >>> mxp = get_namespace(xp)
+    >>> from marray import _get_namespace
+    >>> mxp = _get_namespace(xp)
     >>> A = mxp.eye(3)
     >>> A.mask[0, ...] = True
     >>> x = mxp.asarray([1, 2, 3], mask=[False, False, True])

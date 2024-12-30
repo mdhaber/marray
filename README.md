@@ -14,17 +14,17 @@ Install with `pip`.
 pip install marray
 ```
 
-The only public function is `get_namespace`:
+Use the `from...import...as` syntax to get a masked array namespace.
 
 ```python3
-import numpy as xp  # use any Array API compatible library, installed separately
-import marray
-mxp = marray.get_namespace(xp)
+# use with any Array API compatible library, installed separately
+from marray import numpy as mxp
+import numpy as xp  # optional (if the non-masked namespace is desired)
 ```
 
 The resulting `mxp` namespace has all the features of `xp` that are specified
 in the Array API standard, but they are modified to be mask-aware. Typically, the
-signatures of functions in the `mxp` namespace match those in the `xp` namespace;
+signatures of functions in the `mxp` namespace match those in the standard;
 the one notable exception is the addition of a `mask` keyword argument of `asarray`.
 
 ```python3
@@ -39,4 +39,4 @@ Documentation provided by attributes of `xp` are exposed in the `mxp`
 namespace and are accessible via `help`. For more information, please see
 [the tutorial](https://mdhaber.github.io/marray/tutorial.html).
 
-[^1]: The MArray logo is a nod to NumPy, but MArray is not affiliated with the NumPy project.
+[^1]: The MArray logo is a nod to NumPy's logo, but MArray is not affiliated with the NumPy project.
