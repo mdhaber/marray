@@ -123,10 +123,6 @@ checkout-xp-tests.cmd = [
 ]
 checkout-xp-tests.cwd = "array-api-tests"
 checkout-xp-tests.depends-on = ["clone-xp-tests"]
-# apply patch to test marray
-patch-xp-tests.cmd = "git apply ../tools/xp-tests.patch"
-patch-xp-tests.cwd = "array-api-tests"
-patch-xp-tests.depends-on = ["checkout-xp-tests"]
 # run tests
 xp-tests.cmd = [
   "pytest",
@@ -147,8 +143,9 @@ xp-tests.cmd = [
   "--disable-deadline",
   "array_api_tests/",
 ]
+xp-tests.env.ARRAY_API_TESTS_MODULE = "marray.array_api_strict"
 xp-tests.cwd = "array-api-tests"
-xp-tests.depends-on = ["patch-xp-tests"]
+xp-tests.depends-on = ["checkout-xp-tests"]
 
 [tool.pixi.feature.lint.dependencies]
 pre-commit = "*"
