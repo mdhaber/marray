@@ -114,8 +114,7 @@ def get_namespace(xp):
         ## Visualization ##
         def __repr__(self):
             data_str = repr(self.data)
-            if not (xp.isdtype(self.dtype, "complex floating")):
-                data_str = _mask_string(data_str, self.mask)
+            data_str = _mask_string(data_str, self.mask)
             mask_str = repr(self.mask)
 
             if len(data_str) + len(mask_str) <= 66:
@@ -129,9 +128,7 @@ def get_namespace(xp):
             data_str = str(self.data)
             if self.ndim == 0:
                 data_str = "_" if self.mask else data_str
-            # Currently output for complex floating will just be raw data (wrong)
-            if not (xp.isdtype(self.dtype, "complex floating")):
-                data_str = _mask_string(data_str, self.mask)
+            data_str = _mask_string(data_str, self.mask)
             return data_str
 
         ## Linear Algebra Methods ##
