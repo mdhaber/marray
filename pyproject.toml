@@ -161,6 +161,7 @@ lint = { depends-on = ["pre-commit"] }
 [tool.pixi.feature.docs.dependencies]
 jupyter-book = "*"
 ghp-import = "*"
+numpy = "*"
 
 [tool.pixi.feature.docs.tasks]
 docs = { cmd = "jupyter-book build mybook/", cwd = "." }
