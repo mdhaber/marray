@@ -165,7 +165,7 @@ def irshift(x, y): x >>= y
 inplace_bitwise = [iand, ior, ixor, ilshift, irshift]
 
 
-data_type = ['can_cast', 'finfo', 'iinfo', 'isdtype']
+data_type_fun = ['can_cast', 'finfo', 'iinfo', 'isdtype', 'result_type']
 inspection = ['__array_namespace_info__']
 version = ['__array_api_version__']
 elementwise_unary = ['abs', 'acos', 'acosh', 'asin', 'asinh', 'atan', 'atanh',
@@ -475,20 +475,50 @@ def test_constants(xp):
     assert mxp.pi == xp.pi
 
 
-@pytest.mark.parametrize("f", data_type + inspection + version)
+@pytest.mark.parametrize("f", dtypes_all + inspection + version + ['isdtype'])
 @pytest.mark.parametrize('xp', xps)
-def test_dtype_funcs_inspection(f, xp):
+def test_dtype_inspection_version(f, xp):
     mxp = marray._get_namespace(xp)
-    getattr(mxp, f) is getattr(xp, f)
+    assert getattr(mxp, f) is getattr(xp, f)
 
 
-@pytest.mark.parametrize("dtype", dtypes_all)
+@pytest.mark.parametrize("dtype", dtypes_real + dtypes_complex)
 @pytest.mark.parametrize('xp', xps)
-def test_dtypes(dtype, xp):
-    if xp == np:
-        pytest.xfail("NumPy fails... unclear whether NumPy follows standard here.")
+def test_finfo(dtype, xp, seed=None):
     mxp = marray._get_namespace(xp)
-    getattr(mxp, dtype).__eq__(getattr(xp, dtype))
+    marrays, _, _ = get_arrays(1, dtype=dtype, xp=xp, seed=seed)
+    assert mxp.finfo(dtype) == xp.finfo(dtype)
+    # assert mxp.finfo(marrays[0]) == xp.finfo(dtype)
+
+
+@pytest.mark.parametrize("dtype", dtypes_integral)
+@pytest.mark.parametrize('xp', xps)
+def test_iinfo(dtype, xp, seed=None):
+    mxp = marray._get_namespace(xp)
+    marrays, _, _ = get_arrays(1, dtype=dtype, xp=xp, seed=seed)
+    # comparing the objects themselves doesn't work for NumPy
+    assert mxp.iinfo(dtype).max == xp.iinfo(dtype).max
+    assert mxp.iinfo(dtype).min == xp.iinfo(dtype).min
+    assert mxp.iinfo(dtype).bits == xp.iinfo(dtype).bits
+    # assert mxp.iinfo(marrays[0]).max == xp.iinfo(dtype).max
+
+
+@pytest.mark.parametrize('f_name', ['can_cast', 'result_type'])
+@pytest.mark.parametrize('dtype1', dtypes_all)
+@pytest.mark.parametrize('dtype2', dtypes_all)
+@pytest.mark.parametrize('xp', xps)
+@pass_exceptions(allowed=["cannot be type promoted together"])
+def test_can_cast_result_type(f_name, dtype1, dtype2, xp, seed=None):
+    mxp = marray._get_namespace(xp)
+    mxp_fun = getattr(mxp, f_name)
+    xp_fun = getattr(xp, f_name)
+    marrays, _, _ = get_arrays(1, dtype=dtype1, xp=xp, seed=seed)
+    ref = xp_fun(getattr(xp, dtype1), getattr(xp, dtype2))
+    if f_name == 'result_type' or xp == strict:
+        res1 = mxp_fun(marrays[0], getattr(mxp, dtype2))
+        assert res1 == ref
+    res2 = mxp_fun(getattr(mxp, dtype1), getattr(mxp, dtype2))
+    assert res2 == ref
 
 
 @pytest.mark.parametrize("f_name", elementwise_unary)
