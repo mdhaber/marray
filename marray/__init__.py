@@ -8,7 +8,10 @@ import collections
 import dataclasses
 import inspect
 import sys
+import textwrap
 import types
+
+from ._mask_string import _mask_string
 
 
 def get_namespace(xp):
@@ -108,20 +111,28 @@ def get_namespace(xp):
             self.mask[key] = getattr(other, 'mask', False)
             return self.data.__setitem__(key, getattr(other, 'data', other))
 
-        def _data_mask_string(self, fun):
-            data_str = fun(self.data)
-            mask_str = fun(self.mask)
+        ## Visualization ##
+        def __repr__(self):
+            data_str = repr(self.data)
+            if not (xp.isdtype(self.dtype, "complex floating")):
+                data_str = _mask_string(data_str, self.mask)
+            mask_str = repr(self.mask)
+
             if len(data_str) + len(mask_str) <= 66:
                 return f"MArray({data_str}, {mask_str})"
             else:
-                return f"MArray(\n    {data_str},\n    {mask_str}\n)"
-
-        ## Visualization ##
-        def __repr__(self):
-            return self._data_mask_string(repr)
+                data_str = textwrap.indent(data_str, "    ")
+                mask_str = textwrap.indent(mask_str, "    ")
+                return f"MArray(\n{data_str},\n{mask_str}\n)"
 
         def __str__(self):
-            return self._data_mask_string(str)
+            data_str = str(self.data)
+            if self.ndim == 0:
+                data_str = "_" if self.mask else data_str
+            # Currently output for complex floating will just be raw data (wrong)
+            if not (xp.isdtype(self.dtype, "complex floating")):
+                data_str = _mask_string(data_str, self.mask)
+            return data_str
 
         ## Linear Algebra Methods ##
         def __matmul__(self, other):

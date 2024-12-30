@@ -950,19 +950,19 @@ def test_import(xp):
 def test_str(xp):
     mxp = marray.get_namespace(xp)
     x = mxp.asarray(1, mask=True)
-    ref = "MArray(1, True)"
+    ref = "_"
     assert str(x) == ref
 
 def test_repr():
     mxp = marray.get_namespace(strict)
     x = mxp.asarray(1, mask=True)
-    ref = ("MArray(\n    Array(1, dtype=array_api_strict.int64),"
-           "\n    Array(True, dtype=array_api_strict.bool)\n)")
+    ref = ('MArray(\n    Array(_, dtype=array_api_strict.int64),'
+           '\n    Array(True, dtype=array_api_strict.bool)\n)')
     assert repr(x) == ref
 
     mxp = marray.get_namespace(np)
     x = mxp.asarray(1, mask=True)
-    ref = "MArray(array(1), array(True))"
+    ref = "MArray(array(_), array(True))"
     assert repr(x) == ref
 
 def test_signature_docs():
