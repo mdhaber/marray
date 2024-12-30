@@ -6,19 +6,30 @@ __version__ = "0.0.5"
 
 import collections
 import dataclasses
+import importlib
 import inspect
 import sys
 import types
 
 
-def get_namespace(xp):
+def __getattr__(name):
+    try:
+        xp = importlib.import_module(name)
+        mod = _get_namespace(xp)
+        sys.modules[f"marray.{name}"] = mod
+        return mod
+    except ModuleNotFoundError as e:
+        raise AttributeError(str(e))
+
+
+def _get_namespace(xp):
     """Returns a masked array namespace for an Array API Standard compatible backend
 
     Examples
     --------
     >>> import numpy as xp
-    >>> from marray import get_namespace
-    >>> mxp = get_namespace(xp)
+    >>> from marray import _get_namespace
+    >>> mxp = _get_namespace(xp)
     >>> A = mxp.eye(3)
     >>> A.mask[0, ...] = True
     >>> x = mxp.asarray([1, 2, 3], mask=[False, False, True])
@@ -207,8 +218,9 @@ def get_namespace(xp):
             return self
         setattr(MArray, name, fun)
 
-    mod = types.ModuleType('mxp')
-    sys.modules['mxp'] = mod
+    mod_name = f'marray.{xp.__name__}'
+    mod = types.ModuleType(mod_name)
+    sys.modules[mod_name] = mod
 
     mod.MArray = MArray
 
