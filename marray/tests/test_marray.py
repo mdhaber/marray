@@ -322,6 +322,8 @@ def test_indexing(xp):
     with pytest.raises(NotImplementedError, match=message):
         x[x] = 1
 
+    assert not np.iterable(xp.asarray(1))  # Check gh-72
+
     if xp == np:
         # Situation that came up in gh-71: key validation did not
         # consider that input could be a `tuple`. Some elements can

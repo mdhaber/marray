@@ -124,6 +124,9 @@ def _get_namespace(xp):
             self.mask[key] = getattr(other, 'mask', False)
             return self.data.__setitem__(key, getattr(other, 'data', other))
 
+        def __iter__(self):
+            return iter(self.data)
+
         ## Visualization ##
         def __repr__(self):
             data_str = repr(self.data)
