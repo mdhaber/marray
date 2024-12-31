@@ -322,6 +322,14 @@ def test_indexing(xp):
     with pytest.raises(NotImplementedError, match=message):
         x[x] = 1
 
+    if xp == np:
+        # Situation that came up in gh-71: key validation did not
+        # consider that input could be a `tuple`. Some elements can
+        # be MArrays that need to be validated/normalized.
+        i = mxp.ones(4, dtype=mxp.bool)
+        j = i[..., i]
+        assert mxp.all(i == j)
+
 
 @pytest.mark.parametrize("dtype", dtypes_all)
 @pytest.mark.parametrize('xp', xps)
