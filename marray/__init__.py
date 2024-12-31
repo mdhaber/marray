@@ -11,7 +11,7 @@ import sys
 import textwrap
 import types
 
-from ._mask_string import _mask_string
+from ._mask_text import _mask_repr, _mask_str
 
 
 def get_namespace(xp):
@@ -114,7 +114,7 @@ def get_namespace(xp):
         ## Visualization ##
         def __repr__(self):
             data_str = repr(self.data)
-            data_str = _mask_string(data_str, self.mask)
+            data_str = _mask_repr(data_str, self.mask)
             mask_str = repr(self.mask)
 
             if len(data_str) + len(mask_str) <= 66:
@@ -125,10 +125,8 @@ def get_namespace(xp):
                 return f"MArray(\n{data_str},\n{mask_str}\n)"
 
         def __str__(self):
-            data_str = str(self.data)
-            if self.ndim == 0:
-                data_str = "_" if self.mask else data_str
-            data_str = _mask_string(data_str, self.mask)
+            data_str = repr(self.data)
+            data_str = _mask_str(data_str, self.mask)
             return data_str
 
         ## Linear Algebra Methods ##

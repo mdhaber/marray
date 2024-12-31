@@ -946,12 +946,14 @@ def test_import(xp):
     from mxp import asarray
     asarray(10, mask=True)
 
+
 @pytest.mark.parametrize('xp', xps)
 def test_str(xp):
     mxp = marray.get_namespace(xp)
     x = mxp.asarray(1, mask=True)
     ref = "_"
     assert str(x) == ref
+
 
 def test_repr():
     mxp = marray.get_namespace(strict)
@@ -964,6 +966,7 @@ def test_repr():
     x = mxp.asarray(1, mask=True)
     ref = "MArray(array(_), array(True))"
     assert repr(x) == ref
+
 
 def test_signature_docs():
     # Rough test that signatures were replaced where possible
@@ -979,6 +982,7 @@ def test_signature_docs():
 def test_gh33():
     # See https://github.com/mdhaber/marray/issues/33
     test_array_binary(array_binary[0], dtype='float32', xp=np, seed=566)
+
 
 def test_test():
     seed = 6683004726273775608254816605129298715
