@@ -102,25 +102,30 @@ def _get_namespace(xp):
             args = [getattr(arg, 'data', arg) for arg in args]
             return method(*args, **kwargs)
 
-        ## Indexing ##
-        def __getitem__(self, key):
+        def _validate_key(self, key):
+            if isinstance(key, tuple):
+                return tuple(self._validate_key(key_i) for key_i in key)
+
             if hasattr(key, 'mask') and xp.any(key.mask):
                 message = ("Correct behavior for indexing with a masked array is "
                            "ambiguous, and no convention is supported at this time.")
                 raise NotImplementedError(message)
             elif hasattr(key, 'mask'):
                 key = key.data
+            return key
+
+        ## Indexing ##
+        def __getitem__(self, key):
+            key = self._validate_key(key)
             return MArray(self.data[key], self.mask[key])
 
         def __setitem__(self, key, other):
-            if hasattr(key, 'mask') and xp.any(key.mask):
-                message = ("Correct behavior for indexing with a masked array is "
-                           "ambiguous, and no convention is supported at this time.")
-                raise NotImplementedError(message)
-            elif hasattr(key, 'mask'):
-                key = key.data
+            key = self._validate_key(key)
             self.mask[key] = getattr(other, 'mask', False)
             return self.data.__setitem__(key, getattr(other, 'data', other))
+
+        def __iter__(self):
+            return iter(self.data)
 
         ## Visualization ##
         def __repr__(self):
