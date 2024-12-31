@@ -9,7 +9,10 @@ import dataclasses
 import importlib
 import inspect
 import sys
+import textwrap
 import types
+
+from ._mask_text import _mask_repr, _mask_str
 
 
 def __getattr__(name):
@@ -119,20 +122,23 @@ def _get_namespace(xp):
             self.mask[key] = getattr(other, 'mask', False)
             return self.data.__setitem__(key, getattr(other, 'data', other))
 
-        def _data_mask_string(self, fun):
-            data_str = fun(self.data)
-            mask_str = fun(self.mask)
+        ## Visualization ##
+        def __repr__(self):
+            data_str = repr(self.data)
+            data_str = _mask_repr(data_str, self.mask)
+            mask_str = repr(self.mask)
+
             if len(data_str) + len(mask_str) <= 66:
                 return f"MArray({data_str}, {mask_str})"
             else:
-                return f"MArray(\n    {data_str},\n    {mask_str}\n)"
-
-        ## Visualization ##
-        def __repr__(self):
-            return self._data_mask_string(repr)
+                data_str = textwrap.indent(data_str, "    ")
+                mask_str = textwrap.indent(mask_str, "    ")
+                return f"MArray(\n{data_str},\n{mask_str}\n)"
 
         def __str__(self):
-            return self._data_mask_string(str)
+            data_str = repr(self.data)
+            data_str = _mask_str(data_str, self.mask)
+            return data_str
 
         ## Linear Algebra Methods ##
         def __matmul__(self, other):
