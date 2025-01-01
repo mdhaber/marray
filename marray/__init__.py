@@ -273,13 +273,20 @@ def _get_namespace(xp):
         setattr(mod, name, fun)
 
     ## Data Type Functions and Data Types ##
-    dtype_fun_names = ['can_cast', 'finfo', 'iinfo', 'isdtype', 'result_type']
+    dtype_fun_names = ['can_cast', 'finfo', 'iinfo', 'result_type']
+    for name in dtype_fun_names:
+        def fun(*args, name=name, **kwargs):
+            args = [(getattr(arg, 'data') if hasattr(arg, 'mask') else arg)
+                    for arg in args]
+            return getattr(xp, name)(*args, **kwargs)
+        setattr(mod, name, fun)
+
     dtype_names = ['bool', 'int8', 'int16', 'int32', 'int64', 'uint8', 'uint16',
-                   'uint32', 'uint64', 'float32', 'float64', 'complex64', 'complex128']
+                   'uint32', 'uint64', 'float32', 'float64', 'complex64', 'complex128',
+                   'isdtype']  # not really a dtype, but OK to treat it like one here
     inspection_fun_names = ['__array_namespace_info__']
     version_attribute_names = ['__array_api_version__']
-    for name in (dtype_fun_names + dtype_names + inspection_fun_names
-                 + version_attribute_names):
+    for name in (dtype_names + inspection_fun_names + version_attribute_names):
         setattr(mod, name, getattr(xp, name))
 
     def astype(x, dtype, /, *, copy=True, device=None):
