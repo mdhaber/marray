@@ -2,7 +2,7 @@
 Masked versions of array API compatible arrays
 """
 
-__version__ = "0.0.5"
+__version__ = "0.0.6"
 
 import collections
 import dataclasses
