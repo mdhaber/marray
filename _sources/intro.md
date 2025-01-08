@@ -4,10 +4,16 @@ MArray[^1] adds masks to your favorite
 [Python Array API Standard compatible](https://data-apis.org/array-api/latest/)
 array library.
 
-Install with `pip`.
+Install with `pip`:
 
 ```shell
 pip install marray
+```
+
+or `conda`:
+
+```shell
+conda install -c conda-forge marray-python
 ```
 
 Use the `from...import...as` syntax to get a masked array namespace.
