@@ -336,10 +336,20 @@ def _get_namespace(xp):
     def take(x, indices, /, *, axis=None):
         indices_data = getattr(indices, 'data', indices)
         indices_mask = getattr(indices, 'mask', False)
+        indices_data[indices_mask] = 0  # ensure valid index
         data = xp.take(x.data, indices_data, axis=axis)
         mask = xp.take(x.mask, indices_data, axis=axis) | indices_mask
         return MArray(data, mask=mask)
     mod.take = take
+
+    def take_along_axis(x, indices, /, *, axis=-1):
+        indices_data = getattr(indices, 'data', indices)
+        indices_mask = getattr(indices, 'mask', False)
+        indices_data[indices_mask] = 0  # ensure valid index
+        data = xp.take_along_axis(x.data, indices_data, axis=axis)
+        mask = xp.take_along_axis(x.mask, indices_data, axis=axis) | indices_mask
+        return MArray(data, mask=mask)
+    mod.take_along_axis = take_along_axis
 
     ## Inspection ##
     # Included with dtype functions above

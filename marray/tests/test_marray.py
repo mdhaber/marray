@@ -88,7 +88,7 @@ def pass_exceptions(allowed=[]):
         def inner(*args, seed=None, **kwargs):
             try:
                 return f(*args, seed=seed, **kwargs)
-            except (ValueError, TypeError) as e:
+            except (ValueError, TypeError, NotImplementedError) as e:
                 for message in allowed:
                     if message in str(e):
                         return
@@ -331,6 +331,28 @@ def test_indexing(xp):
         i = mxp.ones(4, dtype=mxp.bool)
         j = i[..., i]
         assert mxp.all(i == j)
+
+
+# array-api-strict doesn't have take_along_axis yet, so xp=np
+@pytest.mark.parametrize("dtype", dtypes_all)
+@pass_exceptions(allowed=["The maximum value of the data's dtype"])
+def test_take_along_axis(dtype, xp=np, seed=None):
+    mxp = marray._get_namespace(xp)
+    marrays, _, seed = get_arrays(1, dtype=dtype, xp=xp, seed=seed)
+    x = marrays[0]
+    i = mxp.argsort(x, axis=-1)
+    res = mxp.take_along_axis(x, i, axis=-1)
+    ref = mxp.sort(x, axis=-1)
+    assert_equal(res, ref, xp=xp, seed=seed)
+
+    rng = np.random.default_rng(seed)
+    mask = rng.random(i.shape) > 0.5
+    i = i.data
+    i[mask] = 1000  # invalid index, but it will be masked
+    i = mxp.asarray(i, mask=mask)
+    res = mxp.take_along_axis(x, i, axis=-1)
+    ref = mxp.asarray(ref.data, mask=(ref.mask | mask))
+    assert_equal(res, ref, xp=xp, seed=seed)
 
 
 @pytest.mark.parametrize("dtype", dtypes_all)
