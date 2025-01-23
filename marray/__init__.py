@@ -43,7 +43,7 @@ def _get_namespace(xp):
     class MArray:
 
         def __init__(self, data, mask=None):
-            data = xp.asarray(getattr(data, '_data', data))
+            data = xp.asarray(_get_data(data))
             mask = (xp.zeros(data.shape, dtype=xp.bool) if mask is None
                     else xp.asarray(mask, dtype=xp.bool))
             if mask.shape != data.shape:  # avoid copy if possible
@@ -99,7 +99,7 @@ def _get_namespace(xp):
 
         def _call_super_method(self, method_name, *args, **kwargs):
             method = getattr(self.data, method_name)
-            args = [getattr(arg, 'data', arg) for arg in args]
+            args = [_get_data(arg) for arg in args]
             return method(*args, **kwargs)
 
         def _validate_key(self, key):
@@ -122,7 +122,7 @@ def _get_namespace(xp):
         def __setitem__(self, key, other):
             key = self._validate_key(key)
             self.mask[key] = getattr(other, 'mask', False)
-            return self.data.__setitem__(key, getattr(other, 'data', other))
+            return self.data.__setitem__(key, _get_data(other))
 
         def __iter__(self):
             return iter(self.data)
@@ -245,7 +245,7 @@ def _get_namespace(xp):
         if device is not None:
             raise NotImplementedError("`device` argument is not implemented")
 
-        data = getattr(obj, 'data', obj)
+        data = _get_data(obj)
         data = xp.asarray(data, dtype=dtype, device=device, copy=copy)
 
         mask = (getattr(obj, 'mask', xp.full(data.shape, False))
@@ -268,7 +268,7 @@ def _get_namespace(xp):
 
     for name in creation_functions_like:
         def fun(x, /, *args, name=name, **kwargs):
-            data = getattr(xp, name)(getattr(x, 'data', x), *args, **kwargs)
+            data = getattr(xp, name)(_get_data(x), *args, **kwargs)
             return MArray(data, mask=getattr(x, 'mask', False))
         setattr(mod, name, fun)
 
@@ -276,8 +276,7 @@ def _get_namespace(xp):
     dtype_fun_names = ['can_cast', 'finfo', 'iinfo', 'result_type']
     for name in dtype_fun_names:
         def fun(*args, name=name, **kwargs):
-            args = [(getattr(arg, 'data') if hasattr(arg, 'mask') else arg)
-                    for arg in args]
+            args = [_get_data(arg) for arg in args]
             return getattr(xp, name)(*args, **kwargs)
         setattr(mod, name, fun)
 
@@ -316,7 +315,7 @@ def _get_namespace(xp):
         def fun(*args, name=name, **kwargs):
             masks = [arg.mask for arg in args if hasattr(arg, 'mask')]
             masks = xp.broadcast_arrays(*masks)
-            args = [getattr(arg, 'data', arg) for arg in args]
+            args = [_get_data(arg) for arg in args]
             out = getattr(xp, name)(*args, **kwargs)
             return MArray(out, mask=xp.any(xp.stack(masks), axis=0))
         setattr(mod, name, fun)
@@ -327,14 +326,14 @@ def _get_namespace(xp):
         masks = [arg.mask for arg in args if hasattr(arg, 'mask')]
         masks = xp.broadcast_arrays(*masks)
         mask = xp.any(xp.stack(masks), axis=0)
-        datas = [getattr(arg, 'data', arg) for arg in args]
+        datas = [_get_data(arg) for arg in args]
         data = xp.clip(datas[0], min=datas[1], max=datas[2])
         return MArray(data, mask)
     mod.clip = clip
 
     ## Indexing Functions
     def take(x, indices, /, *, axis=None):
-        indices_data = getattr(indices, 'data', indices)
+        indices_data = _get_data(indices)
         indices_mask = getattr(indices, 'mask', False)
         indices_data[indices_mask] = 0  # ensure valid index
         data = xp.take(x.data, indices_data, axis=axis)
@@ -343,7 +342,7 @@ def _get_namespace(xp):
     mod.take = take
 
     def take_along_axis(x, indices, /, *, axis=-1):
-        indices_data = getattr(indices, 'data', indices)
+        indices_data = _get_data(indices)
         indices_mask = getattr(indices, 'mask', False)
         indices_data[indices_mask] = 0  # ensure valid index
         data = xp.take_along_axis(x.data, indices_data, axis=axis)
@@ -644,3 +643,9 @@ def _xinfo(x):
         return binfo(min=False, max=True)
     else:
         return xp.finfo(x.dtype)
+
+
+def _get_data(x):
+    # get data from an MArray or NumPy masked array *without*
+    # getting memoryview from NumPy array, etc.
+    return x.data if hasattr(x, 'mask') else x
