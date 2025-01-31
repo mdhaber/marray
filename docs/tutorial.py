@@ -535,14 +535,14 @@ def _(mo):
 
 @app.cell
 def _(mxp):
-    p = mxp.asarray([[1, 2], [3, 4]], mask=[[1, 1], [0, 0]])
-    repr(p)
-    return (p,)
+    q = mxp.asarray([[1, 2], [3, 4]], mask=[[1, 1], [0, 0]])
+    repr(q)
+    return (q,)
 
 
 @app.cell
-def _(mxp, p):
-    repr(mxp.matrix_transpose(p))
+def _(mxp, q):
+    repr(mxp.matrix_transpose(q))
     return
 
 
