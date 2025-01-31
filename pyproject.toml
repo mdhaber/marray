@@ -160,8 +160,13 @@ marimo = "*"
 numpy = "*"
 
 [tool.pixi.feature.docs.tasks]
-tutorial.cmd = "marimo edit docs/tutorial.py"
-tutorial.cwd = "."
+tutorial = { cmd = "marimo edit tutorial.py", cwd = "docs" }
+export-tutorial.cmd = "marimo export html tutorial.py -o static/tutorial.html"
+export-tutorial.cwd = "docs"
+docs = { cmd = "jupyter-book build docs/", cwd = ".", depends-on = "export-tutorial" }
+open-docs.cmd = "open mybook/_build/html/index.html"
+open-docs.cwd = "."
+open-docs.depends-on = ["docs"]
 
 [tool.pixi.feature.py310.dependencies]
 python = "~=3.10.0"
