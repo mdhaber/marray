@@ -158,6 +158,8 @@ lint = { depends-on = ["pre-commit"] }
 [tool.pixi.feature.docs.dependencies]
 marimo = "*"
 numpy = "*"
+ghp-import = "*"
+jupyter-book = "*"
 
 [tool.pixi.feature.docs.tasks]
 tutorial = { cmd = "marimo edit tutorial.py", cwd = "docs" }
