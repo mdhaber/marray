@@ -27,7 +27,14 @@ Home = "https://github.com/mdhaber/marray"
 [tool.ruff]
 target-version = "py310"
 builtins = ["ellipsis"]
-exclude = [".git", ".eggs", "build", "dist", "__pycache__"]
+exclude = [
+  ".git",
+  ".eggs",
+  "build",
+  "dist",
+  "__pycache__",
+  "docs/tutorial.ipynb",
+]
 line-length = 100
 
 [tool.ruff.lint]
@@ -163,10 +170,10 @@ jupyter-book = "*"
 
 [tool.pixi.feature.docs.tasks]
 tutorial = { cmd = "marimo edit tutorial.py", cwd = "docs" }
-export-tutorial.cmd = "marimo export html tutorial.py -o static/tutorial.html"
+export-tutorial.cmd = "marimo export ipynb tutorial.py -o tutorial.ipynb"
 export-tutorial.cwd = "docs"
 docs = { cmd = "jupyter-book build docs/", cwd = ".", depends-on = "export-tutorial" }
-open-docs.cmd = "open mybook/_build/html/index.html"
+open-docs.cmd = "open docs/_build/html/index.html"
 open-docs.cwd = "."
 open-docs.depends-on = ["docs"]
 

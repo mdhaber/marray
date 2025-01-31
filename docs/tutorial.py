@@ -6,6 +6,7 @@ app = marimo.App(width="full")
 
 @app.cell
 def _():
+    # this tutorial is built with marimo!
     import marimo as mo
     return (mo,)
 
@@ -43,7 +44,7 @@ def _(mo):
 @app.cell
 def _(mxp):
     simple_array = mxp.arange(3)
-    repr(simple_array)
+    simple_array
     return (simple_array,)
 
 
@@ -55,7 +56,7 @@ def _(mo):
 
 @app.cell
 def _(simple_array):
-    repr(simple_array.data)
+    simple_array.data
     return
 
 
@@ -67,7 +68,7 @@ def _(mo):
 
 @app.cell
 def _(simple_array):
-    repr(simple_array.mask)
+    simple_array.mask
     return
 
 
@@ -80,7 +81,7 @@ def _(mo):
 @app.cell
 def _(mxp):
     x = mxp.asarray([1, 2, 3, 4], mask=[False, True, False, True])
-    repr(x)
+    x
     return (x,)
 
 
@@ -109,13 +110,13 @@ def _(mo):
 
 @app.cell
 def _(mxp, x):
-    repr(mxp.max(x))  # 4 was masked
+    mxp.max(x)  # 4 was masked
     return
 
 
 @app.cell
 def _(mxp, x):
-    repr(mxp.sum(x))  # 2 and 4 were masked
+    mxp.sum(x)  # 2 and 4 were masked
     return
 
 
@@ -127,7 +128,7 @@ def _(mo):
 
 @app.cell
 def _(mxp, x):
-    repr(mxp.cumulative_sum(x))
+    mxp.cumulative_sum(x)
     return
 
 
@@ -151,13 +152,13 @@ def _(mo):
 @app.cell
 def _(mxp):
     y = mxp.asarray([False, False, False, True], mask=[False, True, False, True])
-    repr(mxp.all(y))
+    mxp.all(y)
     return (y,)
 
 
 @app.cell
 def _(mxp, y):
-    repr(mxp.any(y))
+    mxp.any(y)
     return
 
 
@@ -176,7 +177,7 @@ def _(mo):
 @app.cell
 def _(mxp, y):
     y_all_masked = mxp.asarray(y.data, mask=True)
-    repr(mxp.any(y_all_masked).mask)
+    mxp.any(y_all_masked).mask
     return (y_all_masked,)
 
 
@@ -196,7 +197,7 @@ def _(mxp):
     z_data = [8, 3, 4, 1, 9, 9, 5, 5]
     z_mask = [0, 0, 1, 0, 1, 1, 0, 0]
     z = mxp.asarray(z_data, mask=z_mask)
-    repr(mxp.sort(z))
+    mxp.sort(z)
     return z, z_data, z_mask
 
 
@@ -209,7 +210,7 @@ def _(mo):
 @app.cell
 def _(mxp, z):
     i = mxp.argsort(z)
-    repr(i)
+    i
     return (i,)
 
 
@@ -222,7 +223,7 @@ def _(mo):
 @app.cell
 def _(i, z):
     a = z[i.data]
-    repr(a)
+    a
     return (a,)
 
 
@@ -252,7 +253,7 @@ def _(mo):
 def _(b, mxp):
     c = mxp.astype(b, mxp.uint16)
     c_sorted = mxp.astype(mxp.sort(c), mxp.uint8)
-    repr(c_sorted)
+    c_sorted
     return c, c_sorted
 
 
@@ -270,13 +271,13 @@ def _(mo):
 @app.cell
 def _(mxp, z):
     z_unique = mxp.unique_counts(z)
-    repr(z_unique.values)
+    z_unique.values
     return (z_unique,)
 
 
 @app.cell
 def _(z_unique):
-    repr(z_unique.counts)
+    z_unique.counts
     return
 
 
@@ -299,13 +300,13 @@ def _(mo):
 
 @app.cell
 def _(a, mxp):
-    repr(mxp.flip(a))
+    mxp.flip(a)
     return
 
 
 @app.cell
 def _(a, mxp):
-    repr(mxp.stack([a, a]))
+    mxp.stack([a, a])
     return
 
 
@@ -322,7 +323,7 @@ def _(mo):
 
 @app.cell
 def _(mxp):
-    repr(mxp.eye(3))
+    mxp.eye(3)
     return
 
 
@@ -334,7 +335,7 @@ def _(mo):
 
 @app.cell
 def _(a, mxp):
-    repr(mxp.zeros_like(a))
+    mxp.zeros_like(a)
     return
 
 
@@ -353,13 +354,13 @@ def _(mxp):
     A_mask[0, -1] = 1
     A_mask[-1, 0] = 1
     A = mxp.asarray(A_data, mask=A_mask)
-    repr(A)
+    A
     return A, A_data, A_mask, xp
 
 
 @app.cell
 def _(A, mxp):
-    repr(mxp.tril(A))
+    mxp.tril(A)
     return
 
 
@@ -378,20 +379,20 @@ def _(mo):
 def _(z):
     z_with_zeros = z
     z_with_zeros[[1, -1]] = 0  # add some zeros
-    repr(z_with_zeros)  # let's remember what `z` looks like
+    z_with_zeros  # let's remember what `z` looks like
     return (z_with_zeros,)
 
 
 @app.cell
 def _(mxp, z_with_zeros):
-    repr(mxp.argmax(z_with_zeros))  # 9 is masked, so 8 (at index 0) is the largest element
+    mxp.argmax(z_with_zeros)  # 9 is masked, so 8 (at index 0) is the largest element
     return
 
 
 @app.cell
 def _(mxp, z_with_zeros):
     z_i = mxp.nonzero(z_with_zeros)  # Only elements at these indices are nonzero *and* not masked
-    repr(z_i)
+    z_i
     return (z_i,)
 
 
@@ -404,7 +405,7 @@ def _(mo):
 @app.cell
 def _(z_i, z_with_zeros):
     indices = z_i[0].data
-    repr(z_with_zeros[indices])
+    z_with_zeros[indices]
     return (indices,)
 
 
@@ -425,19 +426,19 @@ def _(mo):
 def _(mxp, xp):
     d = xp.linspace(0, 2*xp.pi, 5)
     d = mxp.asarray(d, mask=(d > xp.pi))
-    repr(d)
+    d
     return (d,)
 
 
 @app.cell
 def _(d):
-    repr(-d)
+    -d
     return
 
 
 @app.cell
 def _(d, mxp):
-    repr(mxp.round(mxp.sin(d)))
+    mxp.round(mxp.sin(d))
     return
 
 
@@ -451,13 +452,13 @@ def _(mo):
 def _(mxp):
     e = mxp.asarray([1, 2, 3, 4], mask=[1, 0, 1, 0])
     f = mxp.asarray([5, 6, 7, 8], mask=[1, 1, 0, 0])
-    repr(e + f)
+    e + f
     return e, f
 
 
 @app.cell
 def _(e, f, mxp):
-    repr(mxp.pow(f, e))
+    mxp.pow(f, e)
     return
 
 
@@ -474,7 +475,7 @@ def _():
     g = numpy.ma.masked_array(0, mask=False)
     with numpy.errstate(divide='ignore', invalid='ignore'):
         h = [1, 0] / g
-    repr(h)
+    h
     return g, h, numpy
 
 
@@ -489,7 +490,7 @@ def _(mxp, numpy):
     j = mxp.asarray(0, mask=False)
     with numpy.errstate(divide='ignore', invalid='ignore'):
         k = [1, 0] / j
-    repr(k)
+    k
     return j, k
 
 
@@ -504,7 +505,7 @@ def _(mxp, numpy, xp):
     m = mxp.asarray(0, mask=False)
     with numpy.errstate(divide='ignore', invalid='ignore'):
         n = [1, 0] / m
-    repr(mxp.asarray(n.data, mask=xp.isnan(n.data)))
+    mxp.asarray(n.data, mask=xp.isnan(n.data))
     return
 
 
@@ -523,7 +524,7 @@ def _(mo):
 def _(mxp):
     o = mxp.asarray([1, 2, 3, 4], mask=[1, 0, 1, 0])
     p = mxp.asarray([5, 6, 7, 8], mask=[1, 1, 0, 0])
-    repr(o @ p)
+    o @ p
     return
 
 
@@ -536,13 +537,13 @@ def _(mo):
 @app.cell
 def _(mxp):
     q = mxp.asarray([[1, 2], [3, 4]], mask=[[1, 1], [0, 0]])
-    repr(q)
+    q
     return (q,)
 
 
 @app.cell
 def _(mxp, q):
-    repr(mxp.matrix_transpose(q))
+    mxp.matrix_transpose(q)
     return
 
 
