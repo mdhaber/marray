@@ -65,4 +65,3 @@ def _mask_str(text, mask):
     text = " "*left + text[left:right]
     text = text.replace(",", "")
     return textwrap.dedent(text)
-

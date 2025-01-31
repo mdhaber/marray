@@ -32,8 +32,8 @@ line-length = 100
 
 [tool.ruff.lint]
 ignore = [
-  "E402", # module level import not at top of file
-  # "E501",  # line too long - let black worry about that
+  "E402",  # module level import not at top of file
+  "E501",  # line too long - let black worry about that
   "E731",  # do not assign a lambda expression, use a def
   "UP038", # type union instead of tuple for isinstance etc
 ]
@@ -156,15 +156,12 @@ pre-commit = "pre-commit run --all-files"
 lint = { depends-on = ["pre-commit"] }
 
 [tool.pixi.feature.docs.dependencies]
-jupyter-book = "*"
-ghp-import = "*"
+marimo = "*"
 numpy = "*"
 
 [tool.pixi.feature.docs.tasks]
-docs = { cmd = "jupyter-book build mybook/", cwd = "." }
-open-docs.cmd = "open mybook/_build/html/index.html"
-open-docs.cwd = "."
-open-docs.depends-on = ["docs"]
+tutorial.cmd = "marimo edit docs/tutorial.py"
+tutorial.cwd = "."
 
 [tool.pixi.feature.py310.dependencies]
 python = "~=3.10.0"
@@ -190,5 +187,5 @@ dev.solve-group = "default"
 docs = { features = ["docs"], solve-group = "default" }
 ci-py310 = { features = ["py310", "tests", "xp-tests"] }
 ci-py313 = { features = ["py313", "tests", "xp-tests"] }
-ci-upstream-dev = { features = ["test-upstream-dev"] }
+# ci-upstream-dev = { features = ["test-upstream-dev"] }
 pypi-test-extra = ["test"]

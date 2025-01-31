@@ -921,7 +921,7 @@ def test_set(f_name, dtype, xp, seed=None):
 
     data[mask] = sentinel
     ref = xp.unique_all(data)
-    ref_mask = np.asarray((ref.values == sentinel))
+    ref_mask = np.asarray(ref.values == sentinel)
 
     ref_values = np.ma.masked_array(np.asarray(ref.values), mask=ref_mask)
     res_values = res if f_name == "unique_values" else res.values
