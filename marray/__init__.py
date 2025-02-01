@@ -12,7 +12,7 @@ import sys
 import textwrap
 import types
 
-from ._mask_text import _mask_repr, _mask_str
+from marray._mask_text import _mask_repr, _mask_str
 
 
 def __getattr__(name):
@@ -358,7 +358,6 @@ def _get_namespace(xp):
         def linalg_fun(x1, x2, /, **kwargs):
             x1 = asarray(x1)
             x2 = asarray(x2)
-            zero = xp.asarray(0)
             data1 = xp.where(x1.mask, xp.asarray(0, dtype=x1.dtype), x1.data)
             data2 = xp.where(x2.mask, xp.asarray(0, dtype=x2.dtype), x2.data)
             fun = getattr(xp, name)
@@ -468,10 +467,10 @@ def _get_namespace(xp):
             sentinel = _xinfo(x).max
             any_masked = xp.any(x.mask)
             if any_masked and xp.any((x.data == sentinel) & ~x.mask):
-                message = (f"The maximum value of the data's dtype is included in the "
+                message = ("The maximum value of the data's dtype is included in the "
                            "non-masked data; this complicates the isolation of unique "
                            "non-masked values when masked values are present. Consider "
-                           "promoting to another dtype to use `{name}`.")
+                           f"promoting to another dtype to use `{name}`.")
                 raise NotImplementedError(message)
             x = asarray(x)
             data = xp.asarray(x.data, copy=True)
