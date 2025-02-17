@@ -27,13 +27,20 @@ Home = "https://github.com/mdhaber/marray"
 [tool.ruff]
 target-version = "py310"
 builtins = ["ellipsis"]
-exclude = [".git", ".eggs", "build", "dist", "__pycache__"]
+exclude = [
+  ".git",
+  ".eggs",
+  "build",
+  "dist",
+  "__pycache__",
+  "docs/tutorial.ipynb",
+]
 line-length = 100
 
 [tool.ruff.lint]
 ignore = [
-  "E402", # module level import not at top of file
-  # "E501",  # line too long - let black worry about that
+  "E402",  # module level import not at top of file
+  "E501",  # line too long - let black worry about that
   "E731",  # do not assign a lambda expression, use a def
   "UP038", # type union instead of tuple for isinstance etc
 ]
@@ -156,13 +163,17 @@ pre-commit = "pre-commit run --all-files"
 lint = { depends-on = ["pre-commit"] }
 
 [tool.pixi.feature.docs.dependencies]
-jupyter-book = "*"
-ghp-import = "*"
+marimo = "*"
 numpy = "*"
+ghp-import = "*"
+jupyter-book = "*"
 
 [tool.pixi.feature.docs.tasks]
-docs = { cmd = "jupyter-book build mybook/", cwd = "." }
-open-docs.cmd = "open mybook/_build/html/index.html"
+tutorial = { cmd = "marimo edit tutorial.py", cwd = "docs" }
+export-tutorial.cmd = "marimo export ipynb tutorial.py -o tutorial.ipynb"
+export-tutorial.cwd = "docs"
+docs = { cmd = "jupyter-book build docs/", cwd = ".", depends-on = "export-tutorial" }
+open-docs.cmd = "open docs/_build/html/index.html"
 open-docs.cwd = "."
 open-docs.depends-on = ["docs"]
 
