@@ -11,6 +11,7 @@ import inspect
 import sys
 import textwrap
 import types
+import math
 
 from ._mask_text import _mask_repr, _mask_str
 
@@ -18,21 +19,21 @@ from ._mask_text import _mask_repr, _mask_str
 def __getattr__(name):
     try:
         xp = importlib.import_module(name)
-        mod = _get_namespace(xp)
+        mod = masked_namespace(xp)
         sys.modules[f"marray.{name}"] = mod
         return mod
     except ModuleNotFoundError as e:
         raise AttributeError(str(e))
 
 
-def _get_namespace(xp):
+def masked_namespace(xp):
     """Returns a masked array namespace for an Array API Standard compatible backend
 
     Examples
     --------
     >>> import numpy as xp
-    >>> from marray import _get_namespace
-    >>> mxp = _get_namespace(xp)
+    >>> from marray import masked_namespace
+    >>> mxp = masked_namespace(xp)
     >>> A = mxp.eye(3)
     >>> A.mask[0, ...] = True
     >>> x = mxp.asarray([1, 2, 3], mask=[False, False, True])
@@ -50,11 +51,13 @@ def _get_namespace(xp):
                 mask = xp.asarray(xp.broadcast_to(mask, data.shape), copy=True)
             self._data = data
             self._dtype = data.dtype
-            self._device = data.device
+            self._device = getattr(data, "device", None)  # accommodate Dask
             # assert data.device == mask.device
             self._ndim = data.ndim
             self._shape = data.shape
-            self._size = data.size
+            # accommodate PyTorch, Dask
+            _size = math.prod((math.nan if i is None else i) for i in data.shape)
+            self._size = None if math.isnan(_size) else _size
 
             self._mask = mask
             self._xp = xp
@@ -430,7 +433,7 @@ def _get_namespace(xp):
 
         mask_count = xp.cumulative_sum(xp.astype(x1.mask, xp.int64))
         x1_compressed = x1.data[~x1.mask]
-        count = xp.zeros(x1_compressed.size+1, dtype=xp.int64)
+        count = xp.zeros(x1_compressed.shape[0]+1, dtype=xp.int64)
         count[:-1] = mask_count[~x1.mask]
         count[-1] = count[-2]
         i = xp.searchsorted(x1_compressed, x2.data, side=side)
@@ -631,6 +634,9 @@ def _get_namespace(xp):
                 pass
 
     return mod
+
+
+_get_namespace = masked_namespace
 
 
 def _xinfo(x):
