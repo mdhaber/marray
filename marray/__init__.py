@@ -16,6 +16,9 @@ import math
 from ._mask_text import _mask_repr, _mask_str
 
 
+__all__ = ["masked_namespace"]
+
+
 def __getattr__(name):
     try:
         xp = importlib.import_module(name)
@@ -31,14 +34,13 @@ def masked_namespace(xp):
 
     Examples
     --------
-    >>> import numpy as xp
+    >>> import array_api_compat.numpy as xp
     >>> from marray import masked_namespace
     >>> mxp = masked_namespace(xp)
-    >>> A = mxp.eye(3)
-    >>> A.mask[0, ...] = True
+    >>> A = mxp.asarray(xp.eye(3), mask=xp.asarray([True, False, False])[:, xp.newaxis])
     >>> x = mxp.asarray([1, 2, 3], mask=[False, False, True])
     >>> A @ x
-    MArray(array([0., 2., 0.]), array([ True, False, False]))
+    MArray(array([ _, 2., 0.]), array([ True, False, False]))
 
     """
     class MArray:
