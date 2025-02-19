@@ -38,9 +38,9 @@ from marray import numpy as mxp
 For cases in which this syntax would fail, use `marray`'s only public function: `marray.masked_namespace`.
 
 ```{code-cell} ipython3
-from array_api_compat import numpy as np
-import marray
-mxp = marray.masked_namespace(np)
+# from array_api_compat import numpy as np
+# import marray
+# mxp = marray.masked_namespace(np)
 ```
 
 `mxp` exposes all the features of NumPy that are specified in the Array API standard, but adds masks support to them. For example:
