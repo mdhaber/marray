@@ -409,6 +409,16 @@
 </div>
 </div>
 </div>
+<p>For cases in which this syntax would fail, use <code class="docutils literal notranslate"><span class="pre">marray</span></code>’s only public function: <code class="docutils literal notranslate"><span class="pre">marray.masked_namespace</span></code>.</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># from array_api_compat import numpy as np</span>
+<span class="c1"># import marray</span>
+<span class="c1"># mxp = marray.masked_namespace(np)</span>
+</pre></div>
+</div>
+</div>
+</div>
 <p><code class="docutils literal notranslate"><span class="pre">mxp</span></code> exposes all the features of NumPy that are specified in the Array API standard, but adds masks support to them. For example:</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
