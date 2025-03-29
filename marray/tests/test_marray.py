@@ -196,7 +196,7 @@ elementwise_binary = ['add', 'atan2', 'copysign', 'divide', 'equal', 'floor_divi
                       'maximum', 'minimum', 'multiply', 'not_equal', 'pow',
                       'remainder', 'subtract']
 searching_array = ['argmax', 'argmin']
-statistical_array = ['cumulative_sum', 'max', 'mean',
+statistical_array = ['cumulative_sum', 'cumulative_prod', 'max', 'mean',
                      'min', 'prod', 'std', 'sum', 'var']
 utility_array = ['all', 'any']
 
@@ -633,9 +633,10 @@ def test_statistical_array(f_name, keepdims, xp, dtype, seed=None):
     marrays, masked_arrays, seed = get_arrays(1, dtype=dtype, xp=xp, seed=seed)
     rng = np.random.default_rng(seed)
     axes = list(range(marrays[0].ndim))
-    axes = axes if f_name == "cumulative_sum" else axes + [None]
-    kwargs = {} if f_name == "cumulative_sum" else {'keepdims': keepdims}
-    f_name2 = 'cumsum' if f_name == "cumulative_sum" else f_name
+    axes = axes if f_name.startswith("cumulative_") else axes + [None]
+    kwargs = {} if f_name.startswith("cumulative_") else {'keepdims': keepdims}
+    f_map = {'cumulative_sum': 'cumsum', 'cumulative_prod': 'cumprod'}
+    f_name2 = f_map.get(f_name, f_name)
 
     axis = axes[rng.integers(len(axes))]
     f = getattr(mxp, f_name)
@@ -651,6 +652,26 @@ def test_statistical_array(f_name, keepdims, xp, dtype, seed=None):
     ref = np.ma.masked_array(ref.data, getattr(ref, 'mask', ref_mask))
     ref = ref.astype(ref_dtype)
     assert_allclose(res, ref, xp=xp, seed=seed, strict=True, rtol=get_rtol(dtype, xp))
+
+@pytest.mark.parametrize("dtype", dtypes_all)
+@pytest.mark.parametrize('xp', xps)
+@pass_exceptions(allowed=["Only numeric dtypes are allowed"])
+def test_cumulative_op_identity(dtype, xp, seed=None):
+    mxp = marray.masked_namespace(xp)
+    marrays, _, seed = get_arrays(1, dtype=dtype, xp=xp, seed=seed)
+    rng = np.random.default_rng(seed)
+    axes = list(range(marrays[0].ndim))
+    axis = axes[rng.integers(len(axes))]
+
+    res = mxp.cumulative_sum(marrays[0], axis=axis, include_initial=True)
+    identity = mxp.take(res, xp.asarray([0], dtype=xp.int64), axis=axis)
+    assert not xp.any(identity.mask)
+    assert xp.all(identity.data == 0)
+
+    res = mxp.cumulative_prod(marrays[0], axis=axis, include_initial=True)
+    identity = mxp.take(res, xp.asarray([0], dtype=xp.int64), axis=axis)
+    assert not xp.any(identity.mask)
+    assert xp.all(identity.data == 1)
 
 
 # Test Creation functions

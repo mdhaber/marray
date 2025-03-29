@@ -339,7 +339,8 @@ def masked_namespace(xp):
     ## Indexing Functions
     def take(x, indices, /, *, axis=None):
         indices_data = _get_data(indices)
-        indices_mask = getattr(indices, 'mask', False)
+        shape = xp.asarray(indices_data).shape
+        indices_mask = getattr(indices, 'mask', xp.broadcast_to(xp.asarray(False), shape))
         indices_data[indices_mask] = 0  # ensure valid index
         data = xp.take(x.data, indices_data, axis=axis)
         mask = xp.take(x.mask, indices_data, axis=axis) | indices_mask
@@ -556,7 +557,7 @@ def masked_namespace(xp):
         not_mask = xp.astype(~x.mask, xp.uint64)
         return xp.sum(not_mask, axis=axis, keepdims=keepdims, dtype=xp.uint64)
 
-    def cumulative_sum(x, *args, **kwargs):
+    def _cumulative_op(x, *args, _identity, _op, **kwargs):
         x = asarray(x)
         axis = kwargs.get('axis', None)
         if axis is None:
@@ -564,15 +565,22 @@ def masked_namespace(xp):
 
         data = xp.asarray(x.data, copy=True)
         mask = x.mask
-        data[mask] = 0
-        res = xp.cumulative_sum(data, *args, **kwargs)
+        data[mask] = _identity
+        res = _op(data, *args, **kwargs)
 
         if kwargs.get('include_initial', False):
             # get `false` of the correct dimensionality to prepend
-            false = xp.astype(xp.take(res, xp.asarray([0]), axis=axis), xp.bool)
+            shape = xp.take(res, xp.asarray([0]), axis=axis).shape
+            false = xp.full(shape, False, dtype=xp.bool)
             mask = xp.concat((false, mask), axis=axis)
 
         return MArray(res, mask)
+
+    def cumulative_sum(x, *args, **kwargs):
+        return _cumulative_op(x, *args, _identity=0, _op=xp.cumulative_sum, **kwargs)
+
+    def cumulative_prod(x, *args, **kwargs):
+        return _cumulative_op(x, *args, _identity=1, _op=xp.cumulative_prod, **kwargs)
 
     def mean(x, axis=None, keepdims=False):
         s = mod.sum(x, axis=axis, keepdims=keepdims)
@@ -602,6 +610,7 @@ def masked_namespace(xp):
     for name in search_names + statfun_names + utility_names:
         setattr(mod, name, get_statistical_fun(name))
     mod.cumulative_sum = cumulative_sum
+    mod.cumulative_prod = cumulative_prod
 
     preface = ["The following is the documentation for the corresponding "
                f"attribute of `{xp.__name__}`.",
