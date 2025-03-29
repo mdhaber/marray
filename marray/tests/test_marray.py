@@ -193,8 +193,8 @@ elementwise_unary = ['abs', 'acos', 'acosh', 'asin', 'asinh', 'atan', 'atanh',
 elementwise_binary = ['add', 'atan2', 'copysign', 'divide', 'equal', 'floor_divide',
                       'greater', 'greater_equal', 'hypot', 'less', 'less_equal',
                       'logaddexp', 'logical_and', 'logical_or', 'logical_xor',
-                      'maximum', 'minimum', 'multiply', 'not_equal', 'pow',
-                      'remainder', 'subtract']
+                      'maximum', 'minimum', 'multiply', 'nextafter', 'not_equal',
+                      'pow', 'remainder', 'subtract']
 searching_array = ['argmax', 'argmin']
 statistical_array = ['cumulative_sum', 'max', 'mean',
                      'min', 'prod', 'std', 'sum', 'var']
