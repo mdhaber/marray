@@ -195,7 +195,7 @@ elementwise_binary = ['add', 'atan2', 'copysign', 'divide', 'equal', 'floor_divi
                       'logaddexp', 'logical_and', 'logical_or', 'logical_xor',
                       'maximum', 'minimum', 'multiply', 'not_equal', 'pow',
                       'remainder', 'subtract']
-searching_array = ['argmax', 'argmin']
+searching_array = ['argmax', 'argmin', 'count_nonzero']
 statistical_array = ['cumulative_sum', 'cumulative_prod', 'max', 'mean',
                      'min', 'prod', 'std', 'sum', 'var']
 utility_array = ['all', 'any']
@@ -638,14 +638,17 @@ def test_statistical_array(f_name, keepdims, xp, dtype, seed=None):
     f_map = {'cumulative_sum': 'cumsum', 'cumulative_prod': 'cumprod'}
     f_name2 = f_map.get(f_name, f_name)
 
+    def _count_nonzero_ref(x, axis, keepdims):
+        return np.sum((x.data != 0) & ~x.mask, axis=axis, keepdims=keepdims)
+
     axis = axes[rng.integers(len(axes))]
     f = getattr(mxp, f_name)
-    f2 = getattr(np.ma, f_name2)
+    f2 = getattr(np.ma, f_name2, _count_nonzero_ref)
     f3 = getattr(np, f_name2)
     res = f(marrays[0], axis=axis, **kwargs)
     ref = f2(masked_arrays[0], axis=axis, **kwargs)
     # masked array dtypes are not correct
-    ref_dtype = f3(masked_arrays[0].data, axis=axis, **kwargs).dtype
+    ref_dtype = np.asarray(f3(masked_arrays[0].data, axis=axis, **kwargs)).dtype
 
     # `argmin`/`argmax` don't calculate mask correctly
     ref_mask = np.all(masked_arrays[0].mask, axis=axis, **kwargs)

@@ -467,6 +467,7 @@ def masked_namespace(xp):
     # Defined below, in Statistical Functions
     # argmax
     # argmin
+    # count_nonzero
 
     ## Set Functions ##
     def get_set_fun(name):
@@ -538,6 +539,7 @@ def masked_namespace(xp):
             replacements = {'max': _xinfo(x).min,
                             'min': _xinfo(x).max,
                             'sum': 0,
+                            'count_nonzero': 0,
                             'prod': 1,
                             'argmax': _xinfo(x).min,
                             'argmin': _xinfo(x).max,
@@ -604,7 +606,7 @@ def masked_namespace(xp):
     mod.var = var
     mod.std = lambda *args, **kwargs: mod.var(*args, **kwargs)**0.5
 
-    search_names = ['argmax', 'argmin']
+    search_names = ['argmax', 'argmin', 'count_nonzero']
     statfun_names = ['max', 'min', 'sum', 'prod']
     utility_names = ['all', 'any']
     for name in search_names + statfun_names + utility_names:
