@@ -870,6 +870,7 @@ def test_manipulation(f_name, n_arrays, n_dims, args, kwargs, dtype, xp, seed=No
 @pytest.mark.parametrize('dtype_out', dtypes_all)
 @pytest.mark.parametrize('copy', [False, True])
 @pytest.mark.parametrize('xp', xps)
+@pass_exceptions(allowed=["The Array API standard stipulates that casting"])
 def test_astype(dtype_in, dtype_out, copy, xp, seed=None):
     mxp = marray.masked_namespace(xp)
     marrays, masked_arrays, seed = get_arrays(1, dtype=dtype_in, xp=xp, seed=seed)
