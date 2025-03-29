@@ -313,9 +313,9 @@ def masked_namespace(xp):
                          'log', 'log1p', 'log2', 'log10', 'logaddexp', 'logical_and',
                          'logical_not', 'logical_or', 'logical_xor', 'maximum',
                          'minimum', 'multiply', 'negative', 'not_equal', 'positive',
-                         'pow', 'real', 'remainder', 'round', 'sign', 'signbit',
-                         'sin', 'sinh', 'square', 'sqrt', 'subtract', 'tan', 'tanh',
-                         'trunc']
+                         'pow', 'real', 'reciprocal', 'remainder', 'round', 'sign',
+                         'signbit', 'sin', 'sinh', 'square', 'sqrt', 'subtract', 'tan',
+                         'tanh', 'trunc']
     for name in elementwise_names:
         def fun(*args, name=name, **kwargs):
             masks = [arg.mask for arg in args if hasattr(arg, 'mask')]
