@@ -95,7 +95,7 @@ def masked_namespace(xp):
             return self._mask
 
         def __array_namespace__(self, api_version=None):
-            if api_version is None or api_version == '2023.12':
+            if api_version is None or api_version == '2024.12':
                 return mod
             else:
                 message = (f"MArray interface for Array API version '{api_version}' "

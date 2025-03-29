@@ -1013,7 +1013,7 @@ def test_array_namespace(xp):
     mxp = marray.masked_namespace(xp)
     x = mxp.asarray([1, 2, 3])
     assert x.__array_namespace__() is mxp
-    assert x.__array_namespace__("2023.12") is mxp
+    assert x.__array_namespace__("2024.12") is mxp
     message = "MArray interface for Array API version 'shrubbery'..."
     with pytest.raises(NotImplementedError, match=message):
         x.__array_namespace__("shrubbery")
