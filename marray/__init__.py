@@ -95,7 +95,7 @@ def masked_namespace(xp):
             return self._mask
 
         def __array_namespace__(self, api_version=None):
-            if api_version is None or api_version == '2023.12':
+            if api_version is None or api_version == '2024.12':
                 return mod
             else:
                 message = (f"MArray interface for Array API version '{api_version}' "
@@ -312,10 +312,10 @@ def masked_namespace(xp):
                          'imag', 'isfinite', 'isinf', 'isnan', 'less', 'less_equal',
                          'log', 'log1p', 'log2', 'log10', 'logaddexp', 'logical_and',
                          'logical_not', 'logical_or', 'logical_xor', 'maximum',
-                         'minimum', 'multiply', 'negative', 'not_equal', 'positive',
-                         'pow', 'real', 'remainder', 'round', 'sign', 'signbit',
-                         'sin', 'sinh', 'square', 'sqrt', 'subtract', 'tan', 'tanh',
-                         'trunc']
+                         'minimum', 'multiply', 'negative', 'nextafter', 'not_equal',
+                         'positive', 'pow', 'real', 'reciprocal', 'remainder', 'round',
+                         'sign', 'signbit', 'sin', 'sinh', 'square', 'sqrt', 'subtract',
+                         'tan', 'tanh', 'trunc']
     for name in elementwise_names:
         def fun(*args, name=name, **kwargs):
             masks = [arg.mask for arg in args if hasattr(arg, 'mask')]
@@ -339,7 +339,8 @@ def masked_namespace(xp):
     ## Indexing Functions
     def take(x, indices, /, *, axis=None):
         indices_data = _get_data(indices)
-        indices_mask = getattr(indices, 'mask', False)
+        shape = xp.asarray(indices_data).shape
+        indices_mask = getattr(indices, 'mask', xp.broadcast_to(xp.asarray(False), shape))
         indices_data[indices_mask] = 0  # ensure valid index
         data = xp.take(x.data, indices_data, axis=axis)
         mask = xp.take(x.mask, indices_data, axis=axis) | indices_mask
@@ -451,9 +452,11 @@ def masked_namespace(xp):
 
     def where(condition, x1, x2, /):
         condition = asarray(condition)
+        data1 = _get_data(x1)  # do not prematurely convert Python scalar to array
+        data2 = _get_data(x2)
         x1 = asarray(x1)
         x2 = asarray(x2)
-        data = xp.where(condition.data, x1.data, x2.data)
+        data = xp.where(condition.data, data1, data2)
         mask = xp.where(condition.data,
                         condition.mask | x1.mask,
                         condition.mask | x2.mask)
@@ -466,6 +469,7 @@ def masked_namespace(xp):
     # Defined below, in Statistical Functions
     # argmax
     # argmin
+    # count_nonzero
 
     ## Set Functions ##
     def get_set_fun(name):
@@ -537,6 +541,7 @@ def masked_namespace(xp):
             replacements = {'max': _xinfo(x).min,
                             'min': _xinfo(x).max,
                             'sum': 0,
+                            'count_nonzero': 0,
                             'prod': 1,
                             'argmax': _xinfo(x).min,
                             'argmin': _xinfo(x).max,
@@ -556,7 +561,7 @@ def masked_namespace(xp):
         not_mask = xp.astype(~x.mask, xp.uint64)
         return xp.sum(not_mask, axis=axis, keepdims=keepdims, dtype=xp.uint64)
 
-    def cumulative_sum(x, *args, **kwargs):
+    def _cumulative_op(x, *args, _identity, _op, **kwargs):
         x = asarray(x)
         axis = kwargs.get('axis', None)
         if axis is None:
@@ -564,15 +569,22 @@ def masked_namespace(xp):
 
         data = xp.asarray(x.data, copy=True)
         mask = x.mask
-        data[mask] = 0
-        res = xp.cumulative_sum(data, *args, **kwargs)
+        data[mask] = _identity
+        res = _op(data, *args, **kwargs)
 
         if kwargs.get('include_initial', False):
             # get `false` of the correct dimensionality to prepend
-            false = xp.astype(xp.take(res, xp.asarray([0]), axis=axis), xp.bool)
+            shape = xp.take(res, xp.asarray([0]), axis=axis).shape
+            false = xp.full(shape, False, dtype=xp.bool)
             mask = xp.concat((false, mask), axis=axis)
 
         return MArray(res, mask)
+
+    def cumulative_sum(x, *args, **kwargs):
+        return _cumulative_op(x, *args, _identity=0, _op=xp.cumulative_sum, **kwargs)
+
+    def cumulative_prod(x, *args, **kwargs):
+        return _cumulative_op(x, *args, _identity=1, _op=xp.cumulative_prod, **kwargs)
 
     def mean(x, axis=None, keepdims=False):
         s = mod.sum(x, axis=axis, keepdims=keepdims)
@@ -620,12 +632,13 @@ def masked_namespace(xp):
     mod.std = lambda *args, **kwargs: mod.var(*args, **kwargs)**0.5
     mod.diff = diff
 
-    search_names = ['argmax', 'argmin']
+    search_names = ['argmax', 'argmin', 'count_nonzero']
     statfun_names = ['max', 'min', 'sum', 'prod']
     utility_names = ['all', 'any']
     for name in search_names + statfun_names + utility_names:
         setattr(mod, name, get_statistical_fun(name))
     mod.cumulative_sum = cumulative_sum
+    mod.cumulative_prod = cumulative_prod
 
     preface = ["The following is the documentation for the corresponding "
                f"attribute of `{xp.__name__}`.",

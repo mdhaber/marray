@@ -70,8 +70,9 @@ def assert_comparison(res, ref, seed, xp, comparison, **kwargs):
     ref_mask = ref.mask.__array_namespace__().broadcast_to(ref.mask, ref.data.shape)
     try:
         strict = kwargs.pop('strict', True)
-        comparison(res.data[~res.mask], ref.data[~ref_mask], strict=strict, **kwargs)
-        comparison(res.mask, ref_mask, strict=True, **kwargs)
+        comparison(np.asarray(res.data[~res.mask]), np.asarray(ref.data[~ref_mask]),
+                   strict=strict, **kwargs)
+        comparison(np.asarray(res.mask), np.asarray(ref_mask), strict=True, **kwargs)
     except AssertionError as e:
         raise AssertionError(seed) from e
 
@@ -189,16 +190,16 @@ version = ['__array_api_version__']
 elementwise_unary = ['abs', 'acos', 'acosh', 'asin', 'asinh', 'atan', 'atanh',
                      'ceil', 'conj', 'cos', 'cosh', 'exp', 'expm1', 'floor', 'imag',
                      'isfinite', 'isinf', 'isnan', 'log', 'log1p', 'log2', 'log10',
-                     'logical_not', 'negative', 'positive', 'real', 'round', 'sign',
-                     'signbit', 'sin', 'sinh', 'square', 'sqrt', 'tan', 'tanh',
-                     'trunc']
+                     'logical_not', 'negative', 'positive', 'real', 'reciprocal',
+                     'round', 'sign', 'signbit', 'sin', 'sinh', 'square', 'sqrt',
+                     'tan', 'tanh', 'trunc']
 elementwise_binary = ['add', 'atan2', 'copysign', 'divide', 'equal', 'floor_divide',
                       'greater', 'greater_equal', 'hypot', 'less', 'less_equal',
                       'logaddexp', 'logical_and', 'logical_or', 'logical_xor',
-                      'maximum', 'minimum', 'multiply', 'not_equal', 'pow',
-                      'remainder', 'subtract']
-searching_array = ['argmax', 'argmin']
-statistical_array = ['cumulative_sum', 'max', 'mean',
+                      'maximum', 'minimum', 'multiply', 'nextafter', 'not_equal',
+                      'pow', 'remainder', 'subtract']
+searching_array = ['argmax', 'argmin', 'count_nonzero']
+statistical_array = ['cumulative_sum', 'cumulative_prod', 'max', 'mean',
                      'min', 'prod', 'std', 'sum', 'var']
 utility_array = ['all', 'any']
 
@@ -349,10 +350,11 @@ def test_indexing(xp):
         assert mxp.all(i == j)
 
 
-# array-api-strict doesn't have take_along_axis yet, so xp=np
 @pytest.mark.parametrize("dtype", dtypes_all)
-@pass_exceptions(allowed=["The maximum value of the data's dtype"])
-def test_take_along_axis(dtype, xp=np, seed=None):
+@pytest.mark.parametrize('xp', xps)
+@pass_exceptions(allowed=["The maximum value of the data's dtype",
+                          "Only real numeric dtypes are allowed in argsort"])
+def test_take_along_axis(dtype, xp, seed=None):
     mxp = marray.masked_namespace(xp)
     marrays, _, seed = get_arrays(1, dtype=dtype, xp=xp, seed=seed)
     x = marrays[0]
@@ -362,7 +364,7 @@ def test_take_along_axis(dtype, xp=np, seed=None):
     assert_equal(res, ref, xp=xp, seed=seed)
 
     rng = np.random.default_rng(seed)
-    mask = rng.random(i.shape) > 0.5
+    mask = xp.asarray(rng.random(i.shape) > 0.5)
     i = i.data
     i[mask] = 1000  # invalid index, but it will be masked
     i = mxp.asarray(i, mask=mask)
@@ -635,24 +637,48 @@ def test_statistical_array(f_name, keepdims, xp, dtype, seed=None):
     marrays, masked_arrays, seed = get_arrays(1, dtype=dtype, xp=xp, seed=seed)
     rng = np.random.default_rng(seed)
     axes = list(range(marrays[0].ndim))
-    axes = axes if f_name == "cumulative_sum" else axes + [None]
-    kwargs = {} if f_name == "cumulative_sum" else {'keepdims': keepdims}
-    f_name2 = 'cumsum' if f_name == "cumulative_sum" else f_name
+    axes = axes if f_name.startswith("cumulative_") else axes + [None]
+    kwargs = {} if f_name.startswith("cumulative_") else {'keepdims': keepdims}
+    f_map = {'cumulative_sum': 'cumsum', 'cumulative_prod': 'cumprod'}
+    f_name2 = f_map.get(f_name, f_name)
+
+    def _count_nonzero_ref(x, axis, keepdims):
+        return np.sum((x.data != 0) & ~x.mask, axis=axis, keepdims=keepdims)
 
     axis = axes[rng.integers(len(axes))]
     f = getattr(mxp, f_name)
-    f2 = getattr(np.ma, f_name2)
+    f2 = getattr(np.ma, f_name2, _count_nonzero_ref)
     f3 = getattr(np, f_name2)
     res = f(marrays[0], axis=axis, **kwargs)
     ref = f2(masked_arrays[0], axis=axis, **kwargs)
     # masked array dtypes are not correct
-    ref_dtype = f3(masked_arrays[0].data, axis=axis, **kwargs).dtype
+    ref_dtype = np.asarray(f3(masked_arrays[0].data, axis=axis, **kwargs)).dtype
 
     # `argmin`/`argmax` don't calculate mask correctly
     ref_mask = np.all(masked_arrays[0].mask, axis=axis, **kwargs)
     ref = np.ma.masked_array(ref.data, getattr(ref, 'mask', ref_mask))
     ref = ref.astype(ref_dtype)
     assert_allclose(res, ref, xp=xp, seed=seed, strict=True, rtol=get_rtol(dtype, xp))
+
+@pytest.mark.parametrize("dtype", dtypes_all)
+@pytest.mark.parametrize('xp', xps)
+@pass_exceptions(allowed=["Only numeric dtypes are allowed"])
+def test_cumulative_op_identity(dtype, xp, seed=None):
+    mxp = marray.masked_namespace(xp)
+    marrays, _, seed = get_arrays(1, dtype=dtype, xp=xp, seed=seed)
+    rng = np.random.default_rng(seed)
+    axes = list(range(marrays[0].ndim))
+    axis = axes[rng.integers(len(axes))]
+
+    res = mxp.cumulative_sum(marrays[0], axis=axis, include_initial=True)
+    identity = mxp.take(res, xp.asarray([0], dtype=xp.int64), axis=axis)
+    assert not xp.any(identity.mask)
+    assert xp.all(identity.data == 0)
+
+    res = mxp.cumulative_prod(marrays[0], axis=axis, include_initial=True)
+    identity = mxp.take(res, xp.asarray([0], dtype=xp.int64), axis=axis)
+    assert not xp.any(identity.mask)
+    assert xp.all(identity.data == 1)
 
 
 @pass_exceptions(allowed=["Only numeric dtypes are allowed"])
@@ -821,6 +847,17 @@ def test_where(dtype, xp, seed=None):
     res = mxp.where(xp.asarray(cond), *marrays)
     ref = np.ma.where(cond, *masked_arrays)
     assert_equal(res, ref, xp=xp, seed=seed)
+
+
+@pytest.mark.parametrize('cond', [False, True])
+@pytest.mark.parametrize('x1', [1, 1., 1+1j, np.int8(1), np.float32()])
+@pytest.mark.parametrize('x2', [1, 1., 1+1j, np.int8(1), np.float32()])
+def test_where_dtype(cond, x1, x2):
+    # NumPy-only sanity check that result dtype is correct
+    mxp = marray.masked_namespace(np)
+    dtype = np.result_type(x1, x2)
+    res = mxp.where(cond, x1, x2)
+    assert res.dtype == dtype
 
 
 @pytest.mark.parametrize('dtype', dtypes_all)
@@ -1038,7 +1075,7 @@ def test_array_namespace(xp):
     mxp = marray.masked_namespace(xp)
     x = mxp.asarray([1, 2, 3])
     assert x.__array_namespace__() is mxp
-    assert x.__array_namespace__("2023.12") is mxp
+    assert x.__array_namespace__("2024.12") is mxp
     message = "MArray interface for Array API version 'shrubbery'..."
     with pytest.raises(NotImplementedError, match=message):
         x.__array_namespace__("shrubbery")
