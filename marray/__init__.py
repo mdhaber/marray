@@ -112,19 +112,41 @@ def masked_namespace(xp):
                 return tuple(self._validate_key(key_i) for key_i in key)
 
             if hasattr(key, 'mask') and xp.any(key.mask):
-                message = ("Correct behavior for indexing with a masked array is "
-                           "ambiguous, and no convention is supported at this time.")
+                message = ("Correct behavior for indexing with a masked array "
+                           "is ambiguous, and no convention is supported at this time.")
                 raise NotImplementedError(message)
             elif hasattr(key, 'mask'):
                 key = key.data
+
             return key
 
         ## Indexing ##
+        def _get_item_bool(self, key):
+            # Returns elements for each element of `key` that is True OR masked
+            # Elements are masked wherever either `self` or `key` were masked
+            key_data, key_mask = _get_data_mask(key)
+            i = key_data | key_mask
+            return MArray(self.data[i], (self.mask | key_mask)[i])
+
         def __getitem__(self, key):
+            if _is_boolean(key, xp):
+                return self._get_item_bool(key)
             key = self._validate_key(key)
             return MArray(self.data[key], self.mask[key])
 
+        def _set_item_bool(self, key, other):
+            # Sets elements for each element of `key` that is True OR masked
+            # Elements are masked wherever either `other` or `key` were masked
+            key_data, key_mask = _get_data_mask(key)
+            other_data, other_mask = _get_data_mask(other)
+            i = key_data | key_mask
+            mask = xp.broadcast_to(xp.asarray(other_mask | key_mask), self.shape)
+            self.mask[i] = mask[i]
+            return self.data.__setitem__(i, other_data)
+
         def __setitem__(self, key, other):
+            if _is_boolean(key, xp):
+                return self._set_item_bool(key, other)
             key = self._validate_key(key)
             self.mask[key] = getattr(other, 'mask', False)
             return self.data.__setitem__(key, _get_data(other))
@@ -667,3 +689,21 @@ def _get_data(x):
     # get data from an MArray or NumPy masked array *without*
     # getting memoryview from NumPy array, etc.
     return x.data if hasattr(x, 'mask') else x
+
+
+def _get_mask(x):
+    # get mask from an MArray or NumPy masked array and
+    # `False` for any object without a mask
+    return getattr(x, 'mask', False)
+
+
+def _get_data_mask(x):
+    # safely unpack data and (implied) mask from essentially any type
+    return _get_data(x), _get_mask(x)
+
+
+def _is_boolean(x, xp):
+    cond1 = isinstance(x, bool)
+    cond2 = isinstance(x, list) and xp.isdtype(xp.asarray(x).dtype, "bool")
+    cond3 = hasattr(x, 'dtype') and xp.isdtype(x.dtype, "bool")
+    return cond1 or cond2 or cond3
