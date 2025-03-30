@@ -591,10 +591,34 @@ def masked_namespace(xp):
         out = mod.real(out) if mod.isdtype(xm.dtype, 'complex floating') else out
         return out
 
+    def diff(x, /, axis=-1, n=1, prepend=None, append=None):
+        # Array API specifies that prepend and append must be arrays,
+        # the shapes must be the same as `x` except for the length along `axis`,
+        # and the dtypes must match. Satisfy the API now; optionally,
+        # respect underlying backend's preferences regarding type promotion
+        # scalar support, etc., later.
+        x = [asarray(el) for el in (prepend, x, append) if el is not None]
+
+        x = mod.concat(x, axis=axis) if len(x) > 1 else x[0]
+        x = mod.moveaxis(x, axis, -1) if axis != -1 else x
+
+        data = xp.diff(x.data)
+        mask = x.mask
+        if mask.shape[-1] > 1:
+            mask = mask[..., :-1] | mask[..., 1:]
+        out = asarray(data, mask=mask)
+
+        # "Higher-order differences must be calculated recursively..."
+        if n > 1:
+            out = mod.diff(out, axis=-1, n=n-1)
+
+        return mod.moveaxis(out, -1, axis) if axis != -1 else out
+
     mod.count = count
     mod.mean = mean
     mod.var = var
     mod.std = lambda *args, **kwargs: mod.var(*args, **kwargs)**0.5
+    mod.diff = diff
 
     search_names = ['argmax', 'argmin']
     statfun_names = ['max', 'min', 'sum', 'prod']
