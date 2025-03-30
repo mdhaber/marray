@@ -1131,6 +1131,7 @@ def test_gh33():
 
 
 def test_test():
+    # dev tool to reproduce a particular failure of a `parametrize`d test
     seed = 178405216878847718565066100854909237986
     # f_name, descending, stable, dtype, xp,
     test_diff(n=2, prepend=False, append=True, dtype='bool', xp=np, seed=seed)
