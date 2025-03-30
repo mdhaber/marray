@@ -20,7 +20,8 @@ dtypes_numeric = dtypes_integral + dtypes_real + dtypes_complex
 dtypes_all = dtypes_boolean + dtypes_integral + dtypes_real + dtypes_complex
 
 
-def get_arrays(n_arrays, *, dtype, xp, shape=None, ndim=(1, 4), seed=None):
+def get_arrays(n_arrays, *, dtype, xp, shape=None, ndim=(1, 4),
+               pre_broadcasted=False, seed=None):
     xpm = marray.masked_namespace(xp)
 
     entropy = np.random.SeedSequence(seed).entropy
@@ -34,7 +35,8 @@ def get_arrays(n_arrays, *, dtype, xp, shape=None, ndim=(1, 4), seed=None):
     for i in range(n_arrays):
         shape_mask = rng.random(size=ndim) > 0.85
         shape_i = shape.copy()
-        shape_i[shape_mask] = 1
+        if not pre_broadcasted:
+            shape_i[shape_mask] = 1
         data = rng.standard_normal(size=shape_i)
 
         if dtype == 'bool':
@@ -679,6 +681,28 @@ def test_cumulative_op_identity(dtype, xp, seed=None):
     assert xp.all(identity.data == 1)
 
 
+@pass_exceptions(allowed=["Only numeric dtypes are allowed"])
+@pytest.mark.parametrize("n", [1, 2, 3])
+@pytest.mark.parametrize("prepend", [False, True])
+@pytest.mark.parametrize("append", [False, True])
+@pytest.mark.parametrize("dtype", dtypes_all)
+@pytest.mark.parametrize('xp', xps)
+def test_diff(n, prepend, append, dtype, xp, seed=None):
+    mxp = marray.masked_namespace(xp)
+    rng = np.random.default_rng(seed)
+    marrays, masked_arrays, seed = get_arrays(3, dtype=dtype, xp=xp,
+                                              pre_broadcasted=True, seed=seed)
+    axes = list(range(marrays[0].ndim))
+    axis = axes[rng.integers(len(axes))]
+    kwargs_mxp = {'prepend': marrays[1] if prepend else None,
+                  'append': marrays[2] if append else None}
+    kwargs_np = {'prepend': masked_arrays[1]} if prepend else {}
+    kwargs_np = kwargs_np | {'append': masked_arrays[2]} if append else kwargs_np
+    res = mxp.diff(marrays[0], n=n, axis=axis, **kwargs_mxp)
+    ref = np.ma.diff(masked_arrays[0], n=n, axis=axis, **kwargs_np)
+    assert_allclose(res, ref, xp=xp, seed=seed, strict=True, rtol=get_rtol(dtype, xp))
+
+
 # Test Creation functions
 @pytest.mark.parametrize('f_name, args, kwargs', [
     # Try to pass options that change output compared to default
@@ -1107,5 +1131,7 @@ def test_gh33():
 
 
 def test_test():
-    seed = 154744772778866453782294527422933373514
-    test_take_along_axis(dtype='uint16', xp=strict, seed=seed)
+    # dev tool to reproduce a particular failure of a `parametrize`d test
+    seed = 178405216878847718565066100854909237986
+    # f_name, descending, stable, dtype, xp,
+    test_diff(n=2, prepend=False, append=True, dtype='bool', xp=np, seed=seed)
