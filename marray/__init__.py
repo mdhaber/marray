@@ -452,9 +452,11 @@ def masked_namespace(xp):
 
     def where(condition, x1, x2, /):
         condition = asarray(condition)
+        data1 = _get_data(x1)  # do not prematurely convert Python scalar to array
+        data2 = _get_data(x2)
         x1 = asarray(x1)
         x2 = asarray(x2)
-        data = xp.where(condition.data, x1.data, x2.data)
+        data = xp.where(condition.data, data1, data2)
         mask = xp.where(condition.data,
                         condition.mask | x1.mask,
                         condition.mask | x2.mask)

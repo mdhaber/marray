@@ -823,6 +823,17 @@ def test_where(dtype, xp, seed=None):
     assert_equal(res, ref, xp=xp, seed=seed)
 
 
+@pytest.mark.parametrize('cond', [False, True])
+@pytest.mark.parametrize('x1', [1, 1., 1+1j, np.int8(1), np.float32()])
+@pytest.mark.parametrize('x2', [1, 1., 1+1j, np.int8(1), np.float32()])
+def test_where_dtype(cond, x1, x2):
+    # NumPy-only sanity check that result dtype is correct
+    mxp = marray.masked_namespace(np)
+    dtype = np.result_type(x1, x2)
+    res = mxp.where(cond, x1, x2)
+    assert res.dtype == dtype
+
+
 @pytest.mark.parametrize('dtype', dtypes_all)
 @pytest.mark.parametrize('xp', xps)
 def test_nonzero(dtype, xp, seed=None):
