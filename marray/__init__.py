@@ -261,8 +261,9 @@ def masked_namespace(xp):
     mod.asarray = asarray
 
     creation_functions = ['arange', 'empty', 'eye', 'from_dlpack',
-                          'full', 'linspace', 'ones', 'zeros']
-    creation_functions_like = ['empty_like', 'full_like', 'ones_like', 'zeros_like']
+                          'linspace', 'ones', 'zeros']
+    creation_functions_like = ['empty_like', 'ones_like', 'zeros_like']
+    # `full` and `full_like` created separately
     #  handled with array manipulation functions
     creation_manip_functions = ['tril', 'triu', 'meshgrid']
     for name in creation_functions:
@@ -276,6 +277,20 @@ def masked_namespace(xp):
             data = getattr(xp, name)(_get_data(x), *args, **kwargs)
             return MArray(data, mask=getattr(x, 'mask', False))
         setattr(mod, name, fun)
+
+    def full(shape, fill_value, *args, dtype=None, device=None, **kwargs):
+        fill_data, fill_mask = _get_data_mask(fill_value)
+        data = xp.full(shape, fill_data, *args, dtype=dtype, device=device, **kwargs)
+        return MArray(data, mask=fill_mask)
+    mod.full = full
+
+    def full_like(x, /, fill_value, *args, dtype=None, device=None, **kwargs):
+        x_data, x_mask = _get_data_mask(x)
+        fill_data, fill_mask = _get_data_mask(fill_value)
+        data = xp.full_like(x_data, fill_data, *args,
+                            dtype=dtype, device=device, **kwargs)
+        return MArray(data, mask=(x_mask | fill_mask))
+    mod.full_like = full_like
 
     ## Data Type Functions and Data Types ##
     dtype_fun_names = ['can_cast', 'finfo', 'iinfo', 'result_type']
@@ -656,3 +671,14 @@ def _get_data(x):
     # get data from an MArray or NumPy masked array *without*
     # getting memoryview from NumPy array, etc.
     return x.data if hasattr(x, 'mask') else x
+
+
+def _get_mask(x):
+    # get mask from an MArray or NumPy masked array and
+    # `False` for any object without a mask
+    return getattr(x, 'mask', False)
+
+
+def _get_data_mask(x):
+    # safely unpack data and (implied) mask from essentially any type
+    return _get_data(x), _get_mask(x)
