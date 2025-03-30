@@ -68,8 +68,9 @@ def assert_comparison(res, ref, seed, xp, comparison, **kwargs):
     ref_mask = ref.mask.__array_namespace__().broadcast_to(ref.mask, ref.data.shape)
     try:
         strict = kwargs.pop('strict', True)
-        comparison(res.data[~res.mask], ref.data[~ref_mask], strict=strict, **kwargs)
-        comparison(res.mask, ref_mask, strict=True, **kwargs)
+        comparison(np.asarray(res.data[~res.mask]), np.asarray(ref.data[~ref_mask]),
+                   strict=strict, **kwargs)
+        comparison(np.asarray(res.mask), np.asarray(ref_mask), strict=True, **kwargs)
     except AssertionError as e:
         raise AssertionError(seed) from e
 
@@ -347,10 +348,11 @@ def test_indexing(xp):
         assert mxp.all(i == j)
 
 
-# array-api-strict doesn't have take_along_axis yet, so xp=np
 @pytest.mark.parametrize("dtype", dtypes_all)
-@pass_exceptions(allowed=["The maximum value of the data's dtype"])
-def test_take_along_axis(dtype, xp=np, seed=None):
+@pytest.mark.parametrize('xp', xps)
+@pass_exceptions(allowed=["The maximum value of the data's dtype",
+                          "Only real numeric dtypes are allowed in argsort"])
+def test_take_along_axis(dtype, xp, seed=None):
     mxp = marray.masked_namespace(xp)
     marrays, _, seed = get_arrays(1, dtype=dtype, xp=xp, seed=seed)
     x = marrays[0]
@@ -360,7 +362,7 @@ def test_take_along_axis(dtype, xp=np, seed=None):
     assert_equal(res, ref, xp=xp, seed=seed)
 
     rng = np.random.default_rng(seed)
-    mask = rng.random(i.shape) > 0.5
+    mask = xp.asarray(rng.random(i.shape) > 0.5)
     i = i.data
     i[mask] = 1000  # invalid index, but it will be masked
     i = mxp.asarray(i, mask=mask)
@@ -1070,6 +1072,5 @@ def test_gh33():
 
 
 def test_test():
-    seed = 6683004726273775608254816605129298715
-    # f_name, descending, stable, dtype, xp,
-    test_sorting('sort', False, False, dtype='uint64', xp=strict, seed=seed)
+    seed = 154744772778866453782294527422933373514
+    test_take_along_axis(dtype='uint16', xp=strict, seed=seed)
