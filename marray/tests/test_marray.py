@@ -188,14 +188,14 @@ version = ['__array_api_version__']
 elementwise_unary = ['abs', 'acos', 'acosh', 'asin', 'asinh', 'atan', 'atanh',
                      'ceil', 'conj', 'cos', 'cosh', 'exp', 'expm1', 'floor', 'imag',
                      'isfinite', 'isinf', 'isnan', 'log', 'log1p', 'log2', 'log10',
-                     'logical_not', 'negative', 'positive', 'real', 'round', 'sign',
-                     'signbit', 'sin', 'sinh', 'square', 'sqrt', 'tan', 'tanh',
-                     'trunc']
+                     'logical_not', 'negative', 'positive', 'real', 'reciprocal',
+                     'round', 'sign', 'signbit', 'sin', 'sinh', 'square', 'sqrt',
+                     'tan', 'tanh', 'trunc']
 elementwise_binary = ['add', 'atan2', 'copysign', 'divide', 'equal', 'floor_divide',
                       'greater', 'greater_equal', 'hypot', 'less', 'less_equal',
                       'logaddexp', 'logical_and', 'logical_or', 'logical_xor',
-                      'maximum', 'minimum', 'multiply', 'not_equal', 'pow',
-                      'remainder', 'subtract']
+                      'maximum', 'minimum', 'multiply', 'nextafter', 'not_equal',
+                      'pow', 'remainder', 'subtract']
 searching_array = ['argmax', 'argmin', 'count_nonzero']
 statistical_array = ['cumulative_sum', 'cumulative_prod', 'max', 'mean',
                      'min', 'prod', 'std', 'sum', 'var']
