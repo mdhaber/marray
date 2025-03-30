@@ -1,16 +1,18 @@
 import functools
 import inspect
 import operator
+import re
 
 import array_api_strict as strict
 import numpy as np
 from array_api_compat import torch, cupy
 import pytest
+torch.set_default_dtype(torch.float64)
 
 import marray
 
-# xps = [np, strict]
-xps = [torch, cupy]
+xps = [np, strict]
+# xps = [torch, cupy]
 dtypes_boolean = ['bool']
 dtypes_uint = ['uint8', 'uint16', 'uint32', 'uint64', ]
 dtypes_int = ['int8', 'int16', 'int32', 'int64']
@@ -74,7 +76,10 @@ def assert_comparison(res, ref, seed, xp, comparison, **kwargs):
     array_type = type(xp.asarray(1.))
     assert isinstance(res.data, array_type)
     assert isinstance(res.mask, array_type)
-    ref_mask = ref.mask.__array_namespace__().broadcast_to(ref.mask, ref.data.shape)
+    try:
+        ref_mask = ref.mask.__array_namespace__().broadcast_to(ref.mask, ref.data.shape)
+    except:  # CuPy doesn't have `__array_namespace__`. Try to simplify in CuPy 14.
+        ref_mask = xp.broadcast_to(ref.mask, ref.data.shape)
     try:
         strict = kwargs.pop('strict', True)
         res_data = res.data[~res.mask]
@@ -90,9 +95,9 @@ def assert_equal(res, ref, seed, xp=None, **kwargs):
 
 
 def assert_allclose(res, ref, seed, xp=None, **kwargs):
-    rtol = ({'rtol': 1e-5} if xp.isdtype(res.dtype, (xp.float32, xp.float64))
-            else {'rtol': 1e-10})
-    kwargs = rtol | kwargs
+    low_precision = xp.isdtype(res.dtype, (xp.float32, xp.complex64))
+    tol = {'rtol': 1e-5, 'atol': 1e-16} if low_precision else {'rtol': 1e-10, 'atol': 1e-32}
+    kwargs = tol | kwargs
     return assert_comparison(res, ref, seed, xp, np.testing.assert_allclose, **kwargs)
 
 
@@ -102,10 +107,11 @@ def pass_exceptions(allowed=[]):
         def inner(*args, seed=None, **kwargs):
             try:
                 return f(*args, seed=seed, **kwargs)
-            except (ValueError, TypeError, NotImplementedError, RuntimeError) as e:
+            except (AttributeError, ValueError, TypeError,
+                    NotImplementedError, RuntimeError) as e:
                 for message in allowed:
-                    if message in str(e):
-                        return
+                    if re.escape(message) in re.escape(str(e)):
+                        pytest.xfail(str(e))
                 else:
                     raise AssertionError(seed) from e
         return inner
@@ -215,15 +221,17 @@ statistical_array = ['cumulative_sum', 'cumulative_prod', 'max', 'mean',
 utility_array = ['all', 'any']
 
 
-torch_exceptions = ["not implemented for 'UInt16'",
-                    "not implemented for 'UInt32'",
-                    "not implemented for 'UInt64'",]
+torch_dtype_exceptions = ["\"index_cpu\" not implemented for 'UInt16'",
+                          "\"index_cpu\" not implemented for 'UInt32'",
+                          "\"index_cpu\" not implemented for 'UInt64'",]
+
 
 @pytest.mark.parametrize("f_name, f",
                          (arithmetic_unary | arithmetic_methods_unary).items())
 @pytest.mark.parametrize('dtype', dtypes_numeric)
 @pytest.mark.parametrize('xp', xps)
-@pass_exceptions(allowed=torch_exceptions)
+@pass_exceptions(allowed=['"abs_cpu" not implemented for \'UInt',
+                          '"neg_cpu" not implemented for \'UInt',] + torch_dtype_exceptions)
 def test_arithmetic_unary(f_name, f, dtype, xp, seed=None):
     marrays, masked_arrays, seed = get_arrays(1, dtype=dtype, xp=xp, seed=seed)
     res = f(marrays[0])
@@ -231,13 +239,22 @@ def test_arithmetic_unary(f_name, f, dtype, xp, seed=None):
     assert_allclose(res, ref, seed=seed, xp=xp)
 
 
-arithetic_binary_exceptions = [
+arithmetic_binary_exceptions = [
     "Integers to negative integer powers are not allowed.",
     "Only floating-point dtypes are allowed in __truediv__",
     "ufunc 'floor_divide' not supported for the input types",
     "ufunc 'remainder' not supported for the input types,",
     "Only real numeric dtypes are allowed in __floordiv__",
-    "Only real numeric dtypes are allowed in __mod__"
+    "Only real numeric dtypes are allowed in __mod__",
+    "of arguments for cupy_floor_divide",
+    "of arguments for cupy_remainder",
+    '"div_floor_cpu" not implemented for \'UInt',
+    '"remainder_cpu" not implemented for \'UInt',
+    '"div_floor_cpu" not implemented for \'Complex',
+    '"remainder_cpu" not implemented for \'Complex',
+    '"add_stub" not implemented for \'UInt',
+    '"pow" not implemented for \'UInt',
+    'ZeroDivisionError',  # torch
 ]
 
 
@@ -245,20 +262,23 @@ arithetic_binary_exceptions = [
                          (arithmetic_binary | arithmetic_methods_binary).items())
 @pytest.mark.parametrize('dtype', dtypes_numeric)
 @pytest.mark.parametrize('xp', xps)
-@pass_exceptions(allowed=arithetic_binary_exceptions)
+@pass_exceptions(allowed=arithmetic_binary_exceptions + torch_dtype_exceptions)
 def test_arithmetic_binary(f_name, f, dtype, xp, seed=None):
     marrays, masked_arrays, seed = get_arrays(2, dtype=dtype, xp=xp, seed=seed)
     res = f(marrays[0], marrays[1])
     ref_data = f(masked_arrays[0].data, masked_arrays[1].data)
     ref_mask = masked_arrays[0].mask | masked_arrays[1].mask
     ref = np.ma.masked_array(ref_data, mask=ref_mask)
-    assert_equal(res, ref, seed=seed, xp=xp)
+    assert_allclose(res, ref, seed=seed, xp=xp)
 
 
 @pytest.mark.parametrize("f_name, f", (array_binary | array_methods_binary).items())
 @pytest.mark.parametrize('dtype', dtypes_all)
 @pytest.mark.parametrize('xp', xps)
-@pass_exceptions(allowed=["Only numeric dtypes are allowed in matmul"])
+@pass_exceptions(allowed=["Only numeric dtypes are allowed in matmul",
+                          '"addmm_impl_cpu_" not implemented for \'Bool\'',
+                          '"bmm" not implemented for \'Bool\'',
+                          '"where_cpu" not implemented for \'UInt'] + torch_dtype_exceptions)
 def test_array_binary(f_name, f, dtype, xp, seed=None):
     marrays, masked_arrays, seed = get_arrays(1, ndim=(2, 4), dtype=dtype, xp=xp, seed=seed)
     res = f(marrays[0], marrays[0].mT)
@@ -274,6 +294,8 @@ def test_array_binary(f_name, f, dtype, xp, seed=None):
 @pytest.mark.parametrize("f_name, f", (bitwise_unary | bitwise_methods_unary).items())
 @pytest.mark.parametrize("dtype", dtypes_integral + dtypes_boolean)
 @pytest.mark.parametrize('xp', xps)
+@pass_exceptions(allowed=['"bitwise_not_cpu" not implemented for \'UInt']
+                         + torch_dtype_exceptions)
 def test_bitwise_unary(f_name, f, dtype, xp, seed=None):
     mxp = marray.masked_namespace(xp)
     marrays, masked_arrays, seed = get_arrays(1, dtype=dtype, xp=xp, seed=seed)
@@ -291,7 +313,14 @@ def test_bitwise_unary(f_name, f, dtype, xp, seed=None):
 @pytest.mark.parametrize("dtype", dtypes_integral + dtypes_boolean)
 @pytest.mark.parametrize('xp', xps)
 @pass_exceptions(allowed=["is only defined for x2 >= 0",
-                          "Only integer dtypes are allowed in "])
+                          "Only integer dtypes are allowed in ",
+                          '"lshift_cpu" not implemented for \'UInt',
+                          '"rshift_cpu" not implemented for \'UInt',
+                          '"lshift_cpu" not implemented for \'Bool',
+                          '"rshift_cpu" not implemented for \'Bool',
+                          ]
+                         + torch_dtype_exceptions
+)
 def test_bitwise_binary(f_name, f, dtype, xp, seed=None):
     mxp = marray.masked_namespace(xp)
     marrays, masked_arrays, seed = get_arrays(2, dtype=dtype, xp=xp, seed=seed)
@@ -335,10 +364,12 @@ def test_indexing(xp):
     assert isinstance(x[1], type(x))
 
     # Test `__setitem__`/`__getitem__` roundtrip with masked array as index
-    i = mxp.asarray(1, mask=True)
-    x[i.__index__()] = 20
-    assert x[i.__index__()] == 20
-    assert isinstance(x[i.__index__()], type(x))
+    i = mxp.asarray(1, mask=False)
+    # CuPy doesn't have `__index__`. Check after release of CuPy 14.
+    i_index = i.__index__() if hasattr(i.data, '__index__') else int(i)
+    x[i_index] = 20
+    assert x[i_index] == 20
+    assert isinstance(x[i_index], type(x))
 
     # `__setitem__` can change mask
     x[1] = mxp.asarray(30, mask=False)
@@ -366,10 +397,13 @@ def test_indexing(xp):
         assert mxp.all(i == j)
 
 
-# array-api-strict doesn't have take_along_axis yet, so xp=np
 @pytest.mark.parametrize("dtype", dtypes_all)
-@pass_exceptions(allowed=["The maximum value of the data's dtype"])
-def test_take_along_axis(dtype, xp=np, seed=None):
+@pytest.mark.parametrize("xp", [np, strict, cupy])
+@pass_exceptions(allowed=["The maximum value of the data's dtype",
+                          "has no attribute 'take_along_axis'",
+                          "has no attribute '__array_namespace__'",
+                          "Only real numeric dtypes are allowed in argsort"])
+def test_take_along_axis(dtype, xp, seed=None):
     mxp = marray.masked_namespace(xp)
     marrays, _, seed = get_arrays(1, dtype=dtype, xp=xp, seed=seed)
     x = marrays[0]
@@ -379,7 +413,7 @@ def test_take_along_axis(dtype, xp=np, seed=None):
     assert_equal(res, ref, xp=xp, seed=seed)
 
     rng = np.random.default_rng(seed)
-    mask = rng.random(i.shape) > 0.5
+    mask = xp.asarray(rng.random(i.shape) > 0.5)
     i = i.data
     i[mask] = 1000  # invalid index, but it will be masked
     i = mxp.asarray(i, mask=mask)
@@ -390,6 +424,7 @@ def test_take_along_axis(dtype, xp=np, seed=None):
 
 @pytest.mark.parametrize("dtype", dtypes_all)
 @pytest.mark.parametrize('xp', xps)
+@pass_exceptions(allowed=["object has no attribute 'to_device'"])  # torch/cupy
 def test_dlpack(dtype, xp, seed=None):
     # This is a placeholder for a real test when there is a real implementation
     mxp = marray.masked_namespace(xp)
@@ -403,7 +438,15 @@ def test_dlpack(dtype, xp, seed=None):
                          (comparison_binary | comparison_methods_binary).items())
 @pytest.mark.parametrize("dtype", dtypes_all)
 @pytest.mark.parametrize('xp', xps)
-@pass_exceptions(allowed=["Only real numeric dtypes are allowed in"])
+@pass_exceptions(allowed=["Only real numeric dtypes are allowed in",
+                          '"lt_cpu" not implemented for \'UInt',
+                          '"le_cpu" not implemented for \'UInt',
+                          '"gt_cpu" not implemented for \'UInt',
+                          '"ge_cpu" not implemented for \'UInt',
+                          '"lt_cpu" not implemented for \'Complex',
+                          '"le_cpu" not implemented for \'Complex',
+                          '"gt_cpu" not implemented for \'Complex',
+                          '"ge_cpu" not implemented for \'Complex'])
 def test_comparison_binary(f_name, f, dtype, xp, seed=None):
     marrays, masked_arrays, seed = get_arrays(2, dtype=dtype, xp=xp, seed=seed)
     res = f(marrays[0], marrays[1])

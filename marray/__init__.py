@@ -172,7 +172,12 @@ def masked_namespace(xp):
 
         @property
         def mT(self):
-            return MArray(self.data.mT, self.mask.mT)
+            # accommodate CuPy, which lacks mT. See if it works in CuPy 14.
+            has_mT = hasattr(self.data, 'mT')
+            data_mT = self.data.mT if has_mT else xp.swapaxes(self.data, -1, -2)
+            mask_mT = self.mask.mT if has_mT else xp.swapaxes(self.mask, -1, -2)
+            return MArray(data_mT, mask_mT)
+            # return MArray(self.data.mT, self.mask.mT)
 
         # dlpack
         def __dlpack_device__(self):
