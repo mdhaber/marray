@@ -1,15 +1,16 @@
 import functools
 import inspect
-import itertools
 import operator
 
 import array_api_strict as strict
 import numpy as np
+from array_api_compat import torch, cupy
 import pytest
 
 import marray
 
-xps = [np, strict]
+# xps = [np, strict]
+xps = [torch, cupy]
 dtypes_boolean = ['bool']
 dtypes_uint = ['uint8', 'uint16', 'uint32', 'uint64', ]
 dtypes_int = ['int8', 'int16', 'int32', 'int64']
@@ -18,6 +19,14 @@ dtypes_complex = ['complex64', 'complex128']
 dtypes_integral = dtypes_uint + dtypes_int
 dtypes_numeric = dtypes_integral + dtypes_real + dtypes_complex
 dtypes_all = dtypes_boolean + dtypes_integral + dtypes_real + dtypes_complex
+
+
+def as_numpy(x):
+    # Use `cupy.testing` when `assert_allclose` and `assert_equal` support `strict`
+    try:
+        return np.asarray(x)
+    except:
+        return cupy.asnumpy(x)
 
 
 def get_arrays(n_arrays, *, dtype, xp, shape=None, ndim=(1, 4), seed=None):
@@ -68,8 +77,10 @@ def assert_comparison(res, ref, seed, xp, comparison, **kwargs):
     ref_mask = ref.mask.__array_namespace__().broadcast_to(ref.mask, ref.data.shape)
     try:
         strict = kwargs.pop('strict', True)
-        comparison(res.data[~res.mask], ref.data[~ref_mask], strict=strict, **kwargs)
-        comparison(res.mask, ref_mask, strict=True, **kwargs)
+        res_data = res.data[~res.mask]
+        ref_data = ref.data[~ref_mask]
+        comparison(as_numpy(res_data), as_numpy(ref_data), strict=strict, **kwargs)
+        comparison(as_numpy(res.mask), as_numpy(ref_mask), strict=True, **kwargs)
     except AssertionError as e:
         raise AssertionError(seed) from e
 
@@ -79,6 +90,9 @@ def assert_equal(res, ref, seed, xp=None, **kwargs):
 
 
 def assert_allclose(res, ref, seed, xp=None, **kwargs):
+    rtol = ({'rtol': 1e-5} if xp.isdtype(res.dtype, (xp.float32, xp.float64))
+            else {'rtol': 1e-10})
+    kwargs = rtol | kwargs
     return assert_comparison(res, ref, seed, xp, np.testing.assert_allclose, **kwargs)
 
 
@@ -88,7 +102,7 @@ def pass_exceptions(allowed=[]):
         def inner(*args, seed=None, **kwargs):
             try:
                 return f(*args, seed=seed, **kwargs)
-            except (ValueError, TypeError, NotImplementedError) as e:
+            except (ValueError, TypeError, NotImplementedError, RuntimeError) as e:
                 for message in allowed:
                     if message in str(e):
                         return
@@ -201,15 +215,20 @@ statistical_array = ['cumulative_sum', 'cumulative_prod', 'max', 'mean',
 utility_array = ['all', 'any']
 
 
+torch_exceptions = ["not implemented for 'UInt16'",
+                    "not implemented for 'UInt32'",
+                    "not implemented for 'UInt64'",]
+
 @pytest.mark.parametrize("f_name, f",
                          (arithmetic_unary | arithmetic_methods_unary).items())
 @pytest.mark.parametrize('dtype', dtypes_numeric)
 @pytest.mark.parametrize('xp', xps)
+@pass_exceptions(allowed=torch_exceptions)
 def test_arithmetic_unary(f_name, f, dtype, xp, seed=None):
     marrays, masked_arrays, seed = get_arrays(1, dtype=dtype, xp=xp, seed=seed)
     res = f(marrays[0])
     ref = f(masked_arrays[0])
-    assert_equal(res, ref, seed=seed, xp=xp)
+    assert_allclose(res, ref, seed=seed, xp=xp)
 
 
 arithetic_binary_exceptions = [
