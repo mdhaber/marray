@@ -2,6 +2,7 @@ import functools
 import inspect
 import operator
 import re
+import math
 
 import pytest
 import marray
@@ -340,6 +341,7 @@ torch_exceptions = ["\"abs_cpu\" not implemented for 'Bool",
                     "Negation, the `-` operator, on a bool tensor is not supported",
                     "signbit is not implemented for complex tensors.",
                     "Subtraction, the `-` operator, with two bool tensors",
+                    "Subtraction, the `-` operator, with a bool tensor",
                     "The `+` operator, on a bool tensor is not supported",
                     "trunc is not supported for complex inputs",
                     "module 'array_api_compat.torch' has no attribute 'repeat'",
@@ -621,8 +623,6 @@ def test_inplace_array_binary(f, dtype, xp, seed=None):
                           "Only floating-point dtypes are allowed",
                           "Integers to negative integer powers are not allowed",
                           "numpy boolean subtract, the `-` operator, is not supported",
-                          "Subtraction, the `-` operator, with two bool tensors",
-                          "Subtraction, the `-` operator, with a bool tensor",
                           "ZeroDivisionError"
                           ] + torch_exceptions)
 def test_rarithmetic_binary(f_name, f, dtype, xp, type_, seed=None):
@@ -683,8 +683,9 @@ def test_attributes(dtype, xp, seed=None):
     assert xp.all(marrays[0].mT.mask == marrays[0].mask.mT)
     assert marrays[0].ndim == marrays[0].data.ndim == marrays[0].mask.ndim
     assert marrays[0].shape == marrays[0].data.shape == marrays[0].mask.shape
-    if "torch" not in str(xp):
-        assert marrays[0].size == marrays[0].data.size == marrays[0].mask.size
+    assert (marrays[0].size  # accommodate torch
+            == math.prod(marrays[0].data.shape)
+            == math.prod(marrays[0].mask.shape))
     if marrays[0].ndim == 2:
         assert xp.all(marrays[0].T.data == marrays[0].data.T)
         assert xp.all(marrays[0].T.mask == marrays[0].mask.T)
@@ -807,7 +808,7 @@ def test_elementwise_binary(f_name, dtype, xp, seed=None):
 
 
 @pytest.mark.parametrize("keepdims", [False, True])
-@pytest.mark.parametrize("f_name", ['any']) #statistical_array + utility_array + searching_array)
+@pytest.mark.parametrize("f_name", statistical_array + utility_array + searching_array)
 @pytest.mark.parametrize("dtype", dtypes_all)
 @pytest.mark.parametrize('xp', xps)
 @pass_exceptions(allowed=["Only floating-point dtypes are allowed in __truediv__",
