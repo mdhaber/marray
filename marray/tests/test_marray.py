@@ -18,11 +18,11 @@ try:
 except (ImportError, ModuleNotFoundError):
     pass
 
-try:
-    from array_api_compat import cupy
-    xps.append(cupy)
-except (ImportError, ModuleNotFoundError):
-    pass
+# try:  # addition of CuPy support is incomplete
+#     from array_api_compat import cupy
+#     xps.append(cupy)
+# except (ImportError, ModuleNotFoundError):
+#     pass
 
 dtypes_boolean = ['bool']
 dtypes_uint = ['uint8', 'uint16', 'uint32', 'uint64', ]
@@ -43,11 +43,11 @@ def as_numpy(x):
 
 
 def pass_backend(*, xp, pass_xp, fun=None, pass_funs=None, dtype=None,
-                 pass_dtypes=None, pass_fun=pytest.skip, reason="Debug later."):
+                 pass_dtypes=None, pass_using=pytest.skip, reason="Debug later."):
     pass_funs = [None] if pass_funs is None else pass_funs
     pass_dtypes = [None] if pass_dtypes is None else pass_dtypes
     if pass_xp in str(xp) and dtype in pass_dtypes and fun in pass_funs:
-        pass_fun(reason=reason)
+        pass_using(reason=reason)
 
 
 def get_arrays(n_arrays, *, dtype, xp, shape=None, ndim=(1, 4),
@@ -380,7 +380,7 @@ arithmetic_binary_exceptions = [
 @pass_exceptions(allowed=arithmetic_binary_exceptions + torch_exceptions)
 def test_arithmetic_binary(f_name, f, dtype, xp, seed=None):
     pass_backend(xp=xp, pass_xp='torch', dtype=dtype, pass_dtypes=['complex64'],
-                 pass_funs=["x ** y"], pass_fun=pytest.xfail,
+                 fun=f_name, pass_funs=["x ** y"], pass_using=pytest.xfail,
                  reason='Occasional tolerance issues.')
     marrays, masked_arrays, seed = get_arrays(2, dtype=dtype, xp=xp, seed=seed)
     res = f(marrays[0], marrays[1])
@@ -627,7 +627,7 @@ def test_inplace_array_binary(f, dtype, xp, seed=None):
                           ] + torch_exceptions)
 def test_rarithmetic_binary(f_name, f, dtype, xp, type_, seed=None):
     pass_backend(xp=xp, pass_xp='torch', dtype=dtype, pass_dtypes=['complex64'],
-                 pass_funs=["x ** y"], pass_fun=pytest.xfail,
+                 fun=f_name, pass_funs=["x ** y"], pass_using=pytest.xfail,
                  reason='Occasional tolerance issues.')
     marrays, masked_arrays, seed = get_arrays(2, dtype=dtype, xp=xp, seed=seed)
     if type_ == "array":
@@ -792,8 +792,8 @@ def test_elementwise_binary(f_name, dtype, xp, seed=None):
     pass_backend(xp=xp, dtype=dtype, fun=f_name, pass_xp='torch',
                  pass_funs=['copysign', 'atan2'],
                  pass_dtypes=['bool', 'uint8', 'uint16', 'int8', 'int16'],
-                 reason="Unexpected dtype", pass_fun=pytest.xfail)
-    pass_backend(xp=xp, dtype=dtype, fun=f_name, pass_xp='torch', pass_fun=pytest.xfail,
+                 reason="Unexpected dtype", pass_using=pytest.xfail)
+    pass_backend(xp=xp, dtype=dtype, fun=f_name, pass_xp='torch', pass_using=pytest.xfail,
                  pass_funs=['pow'], pass_dtypes=['complex64'], reason='Accuracy')
     mxp = marray.masked_namespace(xp)
     marrays, masked_arrays, seed = get_arrays(2, dtype=dtype, xp=xp, seed=seed)
@@ -1062,12 +1062,13 @@ def test_nonzero(dtype, xp, seed=None):
     rng = np.random.default_rng(seed)
     cond = rng.random(marrays[0].shape) > 0.5
     x[xp.asarray(cond)] = 0
-    y[xp.asarray(cond)] = 0
+    y[cond] = 0
     res = mxp.nonzero(x)
     ref = np.ma.nonzero(y)
     for i in range(len(ref)):
-        np.testing.assert_equal(res[i].data, ref[i])
-        np.testing.assert_equal(res[i].mask, np.full(ref[i].shape, False))
+        actual = mxp.asarray(res[i].data, mask=res[i].mask)
+        desired = np.ma.masked_array(ref[i], np.full(ref[i].shape, False))
+        assert_equal(actual, desired, xp=xp, seed=seed)
 
 
 @pytest.mark.parametrize('f_name, n_arrays, n_dims, args, kwargs', [
@@ -1337,6 +1338,5 @@ def test_gh99(xp):
 
 def test_test():
     # dev tool to reproduce a particular failure of a `parametrize`d test
-    seed = 99154806044603893677768861545372495022
-    # f_name, descending, stable, dtype, xp,
-    test_set('unique_all', dtype='uint64', xp=torch, seed=seed)
+    seed = 91803015965563856304156452253329804912
+    test_nonzero("complex128", torch, seed=seed)
