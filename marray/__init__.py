@@ -558,8 +558,7 @@ def masked_namespace(xp):
 
     def count(x, axis=None, keepdims=False):
         x = asarray(x)
-        not_mask = xp.astype(~x.mask, xp.uint64)
-        return xp.sum(not_mask, axis=axis, keepdims=keepdims, dtype=xp.uint64)
+        return xp.count_nonzero(~x.mask, axis=axis, keepdims=keepdims)
 
     def _cumulative_op(x, *args, _identity, _op, **kwargs):
         x = asarray(x)

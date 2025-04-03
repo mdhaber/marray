@@ -1120,6 +1120,21 @@ def test_signature_docs():
     assert mxp.sum.__signature__ == inspect.signature(np.sum)
     assert np.sum.__doc__ in mxp.sum.__doc__
 
+
+@pytest.mark.parametrize('keepdims', [False, True])
+@pytest.mark.parametrize('axis', [-1, 0, (0, 1), None])
+@pytest.mark.parametrize('dtype', dtypes_all)
+@pytest.mark.parametrize('xp', xps)
+def test_count(axis, keepdims, dtype, xp, seed=None):
+    # Not part of the standard... include and test for now
+    mxp = marray.masked_namespace(xp)
+    marrays, masked_arrays, seed = get_arrays(1, dtype=dtype, ndim=(2, 4),
+                                              xp=xp, seed=seed)
+    res = mxp.count(marrays[0], axis=axis, keepdims=keepdims)
+    ref = np.ma.count(masked_arrays[0], axis=axis, keepdims=keepdims)
+    np.testing.assert_equal(np.asarray(res), ref)
+
+
 # To do:
 # - investigate asarray - is copy respected?
 
