@@ -1002,7 +1002,14 @@ def test_set(f_name, dtype, xp, seed=None):
 
     ref_values = np.ma.masked_array(np.asarray(ref.values), mask=ref_mask)
     res_values = res if f_name == "unique_values" else res.values
-    assert_equal(res_values, ref_values, xp=xp, seed=seed)
+    if f_name == "unique_values":
+        # NumPy will no longer sort the result, so do that for comparison
+        mnp = marray.masked_namespace(np)
+        res_values = mnp.asarray(res_values)
+        res_values = mnp.sort(res_values)
+        assert_equal(res_values, ref_values, xp=np, seed=seed)
+    else:
+        assert_equal(res_values, ref_values, xp=xp, seed=seed)
 
     if hasattr(res, 'counts'):
         ref_counts = np.ma.masked_array(np.asarray(ref.counts), mask=ref_mask)
