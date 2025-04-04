@@ -20,7 +20,8 @@ dtypes_numeric = dtypes_integral + dtypes_real + dtypes_complex
 dtypes_all = dtypes_boolean + dtypes_integral + dtypes_real + dtypes_complex
 
 
-def get_arrays(n_arrays, *, dtype, xp, shape=None, ndim=(1, 4), seed=None):
+def get_arrays(n_arrays, *, dtype, xp, shape=None, ndim=(1, 4),
+               pre_broadcasted=False, seed=None):
     xpm = marray.masked_namespace(xp)
 
     entropy = np.random.SeedSequence(seed).entropy
@@ -34,7 +35,8 @@ def get_arrays(n_arrays, *, dtype, xp, shape=None, ndim=(1, 4), seed=None):
     for i in range(n_arrays):
         shape_mask = rng.random(size=ndim) > 0.85
         shape_i = shape.copy()
-        shape_i[shape_mask] = 1
+        if not pre_broadcasted:
+            shape_i[shape_mask] = 1
         data = rng.standard_normal(size=shape_i)
 
         if dtype == 'bool':
@@ -68,10 +70,9 @@ def assert_comparison(res, ref, seed, xp, comparison, **kwargs):
     ref_mask = ref.mask.__array_namespace__().broadcast_to(ref.mask, ref.data.shape)
     try:
         strict = kwargs.pop('strict', True)
-        comparison(np.asarray(res.data[~res.mask]),
-                   np.asarray(ref.data[~ref_mask]), strict=strict, **kwargs)
-        comparison(np.asarray(res.mask),
-                   np.asarray(ref_mask), strict=True, **kwargs)
+        comparison(np.asarray(res.data[~res.mask]), np.asarray(ref.data[~ref_mask]),
+                   strict=strict, **kwargs)
+        comparison(np.asarray(res.mask), np.asarray(ref_mask), strict=True, **kwargs)
     except AssertionError as e:
         raise AssertionError(seed) from e
 
@@ -189,14 +190,14 @@ version = ['__array_api_version__']
 elementwise_unary = ['abs', 'acos', 'acosh', 'asin', 'asinh', 'atan', 'atanh',
                      'ceil', 'conj', 'cos', 'cosh', 'exp', 'expm1', 'floor', 'imag',
                      'isfinite', 'isinf', 'isnan', 'log', 'log1p', 'log2', 'log10',
-                     'logical_not', 'negative', 'positive', 'real', 'round', 'sign',
-                     'signbit', 'sin', 'sinh', 'square', 'sqrt', 'tan', 'tanh',
-                     'trunc']
+                     'logical_not', 'negative', 'positive', 'real', 'reciprocal',
+                     'round', 'sign', 'signbit', 'sin', 'sinh', 'square', 'sqrt',
+                     'tan', 'tanh', 'trunc']
 elementwise_binary = ['add', 'atan2', 'copysign', 'divide', 'equal', 'floor_divide',
                       'greater', 'greater_equal', 'hypot', 'less', 'less_equal',
                       'logaddexp', 'logical_and', 'logical_or', 'logical_xor',
-                      'maximum', 'minimum', 'multiply', 'not_equal', 'pow',
-                      'remainder', 'subtract']
+                      'maximum', 'minimum', 'multiply', 'nextafter', 'not_equal',
+                      'pow', 'remainder', 'subtract']
 searching_array = ['argmax', 'argmin', 'count_nonzero']
 statistical_array = ['cumulative_sum', 'cumulative_prod', 'max', 'mean',
                      'min', 'prod', 'std', 'sum', 'var']
@@ -401,10 +402,11 @@ def test_boolean_indexing(xp, seed=None):
     assert_equal(x2, x, xp=xp, seed=seed)
 
 
-# array-api-strict doesn't have take_along_axis yet, so xp=np
 @pytest.mark.parametrize("dtype", dtypes_all)
-@pass_exceptions(allowed=["The maximum value of the data's dtype"])
-def test_take_along_axis(dtype, xp=np, seed=None):
+@pytest.mark.parametrize('xp', xps)
+@pass_exceptions(allowed=["The maximum value of the data's dtype",
+                          "Only real numeric dtypes are allowed in argsort"])
+def test_take_along_axis(dtype, xp, seed=None):
     mxp = marray.masked_namespace(xp)
     marrays, _, seed = get_arrays(1, dtype=dtype, xp=xp, seed=seed)
     x = marrays[0]
@@ -414,7 +416,7 @@ def test_take_along_axis(dtype, xp=np, seed=None):
     assert_equal(res, ref, xp=xp, seed=seed)
 
     rng = np.random.default_rng(seed)
-    mask = rng.random(i.shape) > 0.5
+    mask = xp.asarray(rng.random(i.shape) > 0.5)
     i = i.data
     i[mask] = 1000  # invalid index, but it will be masked
     i = mxp.asarray(i, mask=mask)
@@ -731,6 +733,28 @@ def test_cumulative_op_identity(dtype, xp, seed=None):
     assert xp.all(identity.data == 1)
 
 
+@pass_exceptions(allowed=["Only numeric dtypes are allowed"])
+@pytest.mark.parametrize("n", [1, 2, 3])
+@pytest.mark.parametrize("prepend", [False, True])
+@pytest.mark.parametrize("append", [False, True])
+@pytest.mark.parametrize("dtype", dtypes_all)
+@pytest.mark.parametrize('xp', xps)
+def test_diff(n, prepend, append, dtype, xp, seed=None):
+    mxp = marray.masked_namespace(xp)
+    rng = np.random.default_rng(seed)
+    marrays, masked_arrays, seed = get_arrays(3, dtype=dtype, xp=xp,
+                                              pre_broadcasted=True, seed=seed)
+    axes = list(range(marrays[0].ndim))
+    axis = axes[rng.integers(len(axes))]
+    kwargs_mxp = {'prepend': marrays[1] if prepend else None,
+                  'append': marrays[2] if append else None}
+    kwargs_np = {'prepend': masked_arrays[1]} if prepend else {}
+    kwargs_np = kwargs_np | {'append': masked_arrays[2]} if append else kwargs_np
+    res = mxp.diff(marrays[0], n=n, axis=axis, **kwargs_mxp)
+    ref = np.ma.diff(masked_arrays[0], n=n, axis=axis, **kwargs_np)
+    assert_allclose(res, ref, xp=xp, seed=seed, strict=True, rtol=get_rtol(dtype, xp))
+
+
 # Test Creation functions
 @pytest.mark.parametrize('f_name, args, kwargs', [
     # Try to pass options that change output compared to default
@@ -875,6 +899,17 @@ def test_where(dtype, xp, seed=None):
     res = mxp.where(xp.asarray(cond), *marrays)
     ref = np.ma.where(cond, *masked_arrays)
     assert_equal(res, ref, xp=xp, seed=seed)
+
+
+@pytest.mark.parametrize('cond', [False, True])
+@pytest.mark.parametrize('x1', [1, 1., 1+1j, np.int8(1), np.float32()])
+@pytest.mark.parametrize('x2', [1, 1., 1+1j, np.int8(1), np.float32()])
+def test_where_dtype(cond, x1, x2):
+    # NumPy-only sanity check that result dtype is correct
+    mxp = marray.masked_namespace(np)
+    dtype = np.result_type(x1, x2)
+    res = mxp.where(cond, x1, x2)
+    assert res.dtype == dtype
 
 
 @pytest.mark.parametrize('dtype', dtypes_all)
@@ -1148,6 +1183,7 @@ def test_gh33():
 
 
 def test_test():
-    seed = 6683004726273775608254816605129298715
+    # dev tool to reproduce a particular failure of a `parametrize`d test
+    seed = 178405216878847718565066100854909237986
     # f_name, descending, stable, dtype, xp,
-    test_sorting('sort', False, False, dtype='uint64', xp=strict, seed=seed)
+    test_diff(n=2, prepend=False, append=True, dtype='bool', xp=np, seed=seed)
