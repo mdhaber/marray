@@ -202,7 +202,13 @@ def masked_namespace(xp):
     unary_names_py = ['__bool__', '__complex__', '__float__', '__index__', '__int__']
     for name in unary_names_py:
         def fun(self, name=name):
-            return self._call_super_method(name)
+            res = self._call_super_method(name)
+            if res and not self.mask:
+                return res
+            if name in {'__complex__', '__float__'}:
+                return res * mod.nan
+            raise ValueError(f"Cannot convert masked value to `{name.strip('_')}`.")
+
         setattr(MArray, name, fun)
 
     # Methods that return the result of an elementwise binary operation

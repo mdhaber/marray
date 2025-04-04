@@ -319,7 +319,7 @@ def test_indexing(xp):
     assert isinstance(x[1], type(x))
 
     # Test `__setitem__`/`__getitem__` roundtrip with masked array as index
-    i = mxp.asarray(1, mask=True)
+    i = mxp.asarray(1, mask=False)
     x[i.__index__()] = 20
     assert x[i.__index__()] == 20
     assert isinstance(x[i.__index__()], type(x))
