@@ -129,7 +129,7 @@ def masked_namespace(xp):
             return MArray(self.data[i], (self.mask | key_mask)[i])
 
         def __getitem__(self, key):
-            if _is_boolean(key, xp):
+            if _is_boolean(key, xp) and getattr(key, 'size', 1) > 0:
                 return self._get_item_bool(key)
             key = self._validate_key(key)
             return MArray(self.data[key], self.mask[key])
@@ -145,7 +145,7 @@ def masked_namespace(xp):
             return self.data.__setitem__(i, other_data)
 
         def __setitem__(self, key, other):
-            if _is_boolean(key, xp):
+            if _is_boolean(key, xp) and getattr(key, 'size', 1) > 0:
                 return self._set_item_bool(key, other)
             key = self._validate_key(key)
             self.mask[key] = getattr(other, 'mask', False)
