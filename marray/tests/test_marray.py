@@ -382,7 +382,7 @@ arithmetic_binary_exceptions = [
 @pass_exceptions(allowed=arithmetic_binary_exceptions + torch_exceptions)
 def test_arithmetic_binary(f_name, f, dtype, xp, seed=None):
     pass_backend(xp=xp, pass_xp='torch', dtype=dtype, pass_dtypes=['complex64'],
-                 fun=f_name, pass_funs=["x ** y"], pass_using=pytest.xfail,
+                 fun=f_name, pass_funs=["x ** y", "x.__pow__(y)"], pass_using=pytest.xfail,
                  reason='Occasional tolerance issues.')
     marrays, masked_arrays, seed = get_arrays(2, dtype=dtype, xp=xp, seed=seed)
     res = f(marrays[0], marrays[1])
@@ -627,7 +627,7 @@ def test_inplace_array_binary(f, dtype, xp, seed=None):
                           ] + torch_exceptions)
 def test_rarithmetic_binary(f_name, f, dtype, xp, type_, seed=None):
     pass_backend(xp=xp, pass_xp='torch', dtype=dtype, pass_dtypes=['complex64'],
-                 fun=f_name, pass_funs=["x ** y"], pass_using=pytest.xfail,
+                 fun=f_name, pass_funs=["x ** y", "x.__pow__(y)"], pass_using=pytest.xfail,
                  reason='Occasional tolerance issues.')
     marrays, masked_arrays, seed = get_arrays(2, dtype=dtype, xp=xp, seed=seed)
     if type_ == "array":
