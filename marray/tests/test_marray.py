@@ -1145,12 +1145,11 @@ def test_astype(dtype_in, dtype_out, copy, xp, seed=None):
     assert_equal(res, ref, xp=xp, seed=seed)
 
 
-@pytest.mark.parametrize('xp', xps)
-def test_asarray_device(xp):
+def test_asarray_device(xp=np):
     mxp = marray.masked_namespace(xp)
-    message = "`device` argument is not implemented"
-    with pytest.raises(NotImplementedError, match=message):
-        mxp.asarray(xp.asarray([1, 2, 3]), device='coconut')
+    device = 'cpu'
+    x = mxp.asarray(xp.asarray([1, 2, 3]), device=device)
+    assert x.device == x.data.device == x.mask.device == device
 
 
 @pytest.mark.parametrize('dtype', dtypes_all)
@@ -1347,4 +1346,4 @@ def test_gh99(xp):
 def test_test():
     # dev tool to reproduce a particular failure of a `parametrize`d test
     seed = 91803015965563856304156452253329804912
-    test_nonzero("complex128", torch, seed=seed)
+    test_nonzero("complex128", np, seed=seed)
