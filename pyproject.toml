@@ -18,7 +18,14 @@ dynamic = ["version", "description"]
 requires-python = ">=3.10"
 
 [project.optional-dependencies]
-test = ["numpy", "pytest", "pytest-cov", "array-api-strict"]
+test = [
+    "numpy",
+    "pytest",
+    "pytest-cov",
+    "array-api-strict",
+    "array-api-compat",
+    "pytorch",
+]
 docs = ["jupyter-book", "ghp-import"]
 
 [project.urls]
@@ -88,6 +95,8 @@ numpy = "*"
 pytest = "*"
 pytest-cov = "*"
 array-api-strict = "*"
+array-api-compat = "*"
+pytorch = "*"
 
 [tool.pixi.feature.tests.tasks]
 tests = "pytest -v"
@@ -101,6 +110,8 @@ pytest-json-report = "*"
 hypothesis = "*"
 ndindex = "*"
 array-api-strict = "*"
+array-api-compat = "*"
+pytorch = "*"
 
 [tool.pixi.feature.xp-tests.tasks]
 # clean array-api-tests dir
