@@ -174,7 +174,12 @@ def masked_namespace(xp):
 
         @property
         def mT(self):
-            return MArray(self.data.mT, self.mask.mT)
+            # accommodate CuPy, which lacks mT. See if it works in CuPy 14.
+            has_mT = hasattr(self.data, 'mT')
+            data_mT = self.data.mT if has_mT else xp.swapaxes(self.data, -1, -2)
+            mask_mT = self.mask.mT if has_mT else xp.swapaxes(self.mask, -1, -2)
+            return MArray(data_mT, mask_mT)
+            # return MArray(self.data.mT, self.mask.mT)
 
         # dlpack
         def __dlpack_device__(self):
@@ -488,7 +493,7 @@ def masked_namespace(xp):
             data = xp.asarray(x.data, copy=True)
             # Replace masked elements with a sentinel value: they are all treated as
             # the same as one another and distinct from all non-masked values.
-            data[x.mask] = sentinel
+            data[x.mask] = xp.asarray(sentinel, dtype=data.dtype)
             fun = getattr(xp, name)
             res = fun(data)
             if name == 'unique_values':
@@ -525,7 +530,7 @@ def masked_namespace(xp):
                            "are present. Consider promoting to another dtype to use "
                            f"`{name}`.")
                 raise NotImplementedError(message)
-            data[x.mask] = sentinel
+            data[x.mask] = xp.asarray(sentinel, dtype=data.dtype)
             fun = getattr(xp, name)
             kwargs = {'descending': True} if descending else {}
             res = fun(data, axis=axis, stable=stable, **kwargs)
@@ -547,8 +552,8 @@ def masked_namespace(xp):
                             'prod': 1,
                             'argmax': _xinfo(x).min,
                             'argmin': _xinfo(x).max,
-                            'all': xp.asarray(True),
-                            'any': xp.asarray(False)}
+                            'all': True,
+                            'any': False}
             x = asarray(x)
             data = xp.asarray(x.data, copy=True)
             data[x.mask] = replacements[name]
