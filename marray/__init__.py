@@ -47,13 +47,14 @@ def masked_namespace(xp):
 
         def __init__(self, data, mask=None):
             data = xp.asarray(_get_data(data))
-            mask = (xp.zeros(data.shape, dtype=xp.bool) if mask is None
-                    else xp.asarray(mask, dtype=xp.bool))
+            device = getattr(data, "device", None)  # accommodate Dask
+            mask = (xp.zeros(data.shape, dtype=xp.bool, device=device) if mask is None
+                    else xp.asarray(mask, dtype=xp.bool, device=device))
             if mask.shape != data.shape:  # avoid copy if possible
                 mask = xp.asarray(xp.broadcast_to(mask, data.shape), copy=True)
             self._data = data
             self._dtype = data.dtype
-            self._device = getattr(data, "device", None)  # accommodate Dask
+            self._device = device
             # assert data.device == mask.device
             self._ndim = data.ndim
             self._shape = data.shape
@@ -254,13 +255,11 @@ def masked_namespace(xp):
 
     ## Creation Functions ##
     def asarray(obj, /, *, mask=None, dtype=None, device=None, copy=None):
-        if device is not None:
-            raise NotImplementedError("`device` argument is not implemented")
-
         data = _get_data(obj)
         data = xp.asarray(data, dtype=dtype, device=device, copy=copy)
+        device = getattr(data, 'device', None)
 
-        mask = (getattr(obj, 'mask', xp.full(data.shape, False))
+        mask = (getattr(obj, 'mask', xp.zeros(data.shape, dtype=xp.bool, device=device))
                 if mask is None else mask)
         mask = xp.asarray(mask, dtype=xp.bool, device=device, copy=copy)
 
