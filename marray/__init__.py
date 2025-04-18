@@ -563,7 +563,7 @@ def masked_namespace(xp):
 
     def count(x, axis=None, keepdims=False):
         x = asarray(x)
-        return xp.count_nonzero(~x.mask, axis=axis, keepdims=keepdims)
+        return asarray(xp.count_nonzero(~x.mask, axis=axis, keepdims=keepdims))
 
     def _cumulative_op(x, *args, _identity, _op, **kwargs):
         x = asarray(x)
@@ -592,7 +592,7 @@ def masked_namespace(xp):
 
     def mean(x, axis=None, keepdims=False):
         s = mod.sum(x, axis=axis, keepdims=keepdims)
-        dtype = xp.uint64 if xp.isdtype(s.dtype, ("bool", "integral")) else s.dtype
+        dtype = xp.int64 if xp.isdtype(s.dtype, ("bool", "integral")) else s.dtype
         n = mod.astype(mod.count(x, axis=axis, keepdims=keepdims), dtype)
         return s / n
 
@@ -601,7 +601,7 @@ def masked_namespace(xp):
         xm = x - m
         xmc = mod.conj(xm) if mod.isdtype(xm.dtype, 'complex floating') else xm
         s = mod.sum(xm*xmc, axis=axis, keepdims=keepdims)
-        dtype = xp.uint64 if xp.isdtype(s.dtype, ("bool", "integral")) else s.dtype
+        dtype = xp.int64 if xp.isdtype(s.dtype, ("bool", "integral")) else s.dtype
         n = mod.astype(mod.count(x, axis=axis, keepdims=keepdims), dtype)
         out = s / (n - correction)
         out = mod.real(out) if mod.isdtype(xm.dtype, 'complex floating') else out
