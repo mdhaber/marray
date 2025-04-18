@@ -1210,7 +1210,7 @@ def test_set(f_name, dtype, xp, seed=None):
         assert_equal(res_values, ref_values, xp=xp, seed=seed)
 
     if hasattr(res, 'counts'):
-        ref_counts = np.ma.masked_array(np.asarray(ref.counts), mask=ref_mask)
+        ref_counts = np.ma.masked_array(np.asarray(ref.counts), mask=False)
         assert_equal(res.counts, ref_counts, xp=xp, seed=seed)
 
     if hasattr(res, 'indices'):
