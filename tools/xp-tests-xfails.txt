@@ -40,18 +40,6 @@ array_api_tests/test_has_names.py::test_has_names[linalg-vector_norm]
 array_api_tests/test_signatures.py::test_array_method_signature[__dlpack__]
 # flaky on macos
 array_api_tests/test_operators_and_elementwise_functions.py::test_sqrt
-# being added in separate PRs
-array_api_tests/test_has_names.py::test_has_names[utility-diff]
-array_api_tests/test_has_names.py::test_has_names[elementwise-nextafter]
-array_api_tests/test_has_names.py::test_has_names[elementwise-reciprocal]
-array_api_tests/test_operators_and_elementwise_functions.py::test_reciprocal
-array_api_tests/test_signatures.py::test_func_signature[diff]
-array_api_tests/test_signatures.py::test_func_signature[nextafter]
-array_api_tests/test_signatures.py::test_func_signature[reciprocal]
-array_api_tests/test_special_cases.py::test_binary[nextafter]
-array_api_tests/test_special_cases.py::test_binary[nextafter(x1_i is NaN or x2_i is NaN) -> NaN]
-array_api_tests/test_special_cases.py::test_binary[nextafter(x1_i is -0 and x2_i is +0) -> +0]
-array_api_tests/test_special_cases.py::test_binary[nextafter(x1_i is +0 and x2_i is -0) -> -0]
 # pending investigation; see https://github.com/mdhaber/marray/issues/107
 array_api_tests/test_special_cases.py::test_binary[floor_divide(x1_i is +infinity and isfinite(x2_i) and x2_i > 0) -> +infinity]
 array_api_tests/test_special_cases.py::test_binary[floor_divide(x1_i is +infinity and isfinite(x2_i) and x2_i < 0) -> -infinity]

@@ -172,7 +172,12 @@ def masked_namespace(xp):
 
         @property
         def mT(self):
-            return MArray(self.data.mT, self.mask.mT)
+            # accommodate CuPy, which lacks mT. See if it works in CuPy 14.
+            has_mT = hasattr(self.data, 'mT')
+            data_mT = self.data.mT if has_mT else xp.swapaxes(self.data, -1, -2)
+            mask_mT = self.mask.mT if has_mT else xp.swapaxes(self.mask, -1, -2)
+            return MArray(data_mT, mask_mT)
+            # return MArray(self.data.mT, self.mask.mT)
 
         # dlpack
         def __dlpack_device__(self):
@@ -327,10 +332,10 @@ def masked_namespace(xp):
                          'imag', 'isfinite', 'isinf', 'isnan', 'less', 'less_equal',
                          'log', 'log1p', 'log2', 'log10', 'logaddexp', 'logical_and',
                          'logical_not', 'logical_or', 'logical_xor', 'maximum',
-                         'minimum', 'multiply', 'negative', 'not_equal', 'positive',
-                         'pow', 'real', 'remainder', 'round', 'sign', 'signbit',
-                         'sin', 'sinh', 'square', 'sqrt', 'subtract', 'tan', 'tanh',
-                         'trunc']
+                         'minimum', 'multiply', 'negative', 'nextafter', 'not_equal',
+                         'positive', 'pow', 'real', 'reciprocal', 'remainder', 'round',
+                         'sign', 'signbit', 'sin', 'sinh', 'square', 'sqrt', 'subtract',
+                         'tan', 'tanh', 'trunc']
     for name in elementwise_names:
         def fun(*args, name=name, **kwargs):
             masks = [arg.mask for arg in args if hasattr(arg, 'mask')]
@@ -467,9 +472,11 @@ def masked_namespace(xp):
 
     def where(condition, x1, x2, /):
         condition = asarray(condition)
+        data1 = _get_data(x1)  # do not prematurely convert Python scalar to array
+        data2 = _get_data(x2)
         x1 = asarray(x1)
         x2 = asarray(x2)
-        data = xp.where(condition.data, x1.data, x2.data)
+        data = xp.where(condition.data, data1, data2)
         mask = xp.where(condition.data,
                         condition.mask | x1.mask,
                         condition.mask | x2.mask)
@@ -499,7 +506,7 @@ def masked_namespace(xp):
             data = xp.asarray(x.data, copy=True)
             # Replace masked elements with a sentinel value: they are all treated as
             # the same as one another and distinct from all non-masked values.
-            data[x.mask] = sentinel
+            data[x.mask] = xp.asarray(sentinel, dtype=data.dtype)
             fun = getattr(xp, name)
             res = fun(data)
             if name == 'unique_values':
@@ -536,7 +543,7 @@ def masked_namespace(xp):
                            "are present. Consider promoting to another dtype to use "
                            f"`{name}`.")
                 raise NotImplementedError(message)
-            data[x.mask] = sentinel
+            data[x.mask] = xp.asarray(sentinel, dtype=data.dtype)
             fun = getattr(xp, name)
             kwargs = {'descending': True} if descending else {}
             res = fun(data, axis=axis, stable=stable, **kwargs)
@@ -558,8 +565,8 @@ def masked_namespace(xp):
                             'prod': 1,
                             'argmax': _xinfo(x).min,
                             'argmin': _xinfo(x).max,
-                            'all': xp.asarray(True),
-                            'any': xp.asarray(False)}
+                            'all': True,
+                            'any': False}
             x = asarray(x)
             data = xp.asarray(x.data, copy=True)
             data[x.mask] = replacements[name]
@@ -616,10 +623,34 @@ def masked_namespace(xp):
         out = mod.real(out) if mod.isdtype(xm.dtype, 'complex floating') else out
         return out
 
+    def diff(x, /, axis=-1, n=1, prepend=None, append=None):
+        # Array API specifies that prepend and append must be arrays,
+        # the shapes must be the same as `x` except for the length along `axis`,
+        # and the dtypes must match. Satisfy the API now; optionally,
+        # respect underlying backend's preferences regarding type promotion
+        # scalar support, etc., later.
+        x = [asarray(el) for el in (prepend, x, append) if el is not None]
+
+        x = mod.concat(x, axis=axis) if len(x) > 1 else x[0]
+        x = mod.moveaxis(x, axis, -1) if axis != -1 else x
+
+        data = xp.diff(x.data)
+        mask = x.mask
+        if mask.shape[-1] > 1:
+            mask = mask[..., :-1] | mask[..., 1:]
+        out = asarray(data, mask=mask)
+
+        # "Higher-order differences must be calculated recursively..."
+        if n > 1:
+            out = mod.diff(out, axis=-1, n=n-1)
+
+        return mod.moveaxis(out, -1, axis) if axis != -1 else out
+
     mod.count = count
     mod.mean = mean
     mod.var = var
     mod.std = lambda *args, **kwargs: mod.var(*args, **kwargs)**0.5
+    mod.diff = diff
 
     search_names = ['argmax', 'argmin', 'count_nonzero']
     statfun_names = ['max', 'min', 'sum', 'prod']
