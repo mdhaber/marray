@@ -531,8 +531,9 @@ def test_boolean_indexing(xp, seed=None):
     ref = mxp.asarray(x.data[j.data | j.mask], mask=(x.mask | j.mask)[j.data | j.mask])
     assert_equal(x[j], ref, xp=xp, seed=seed)
 
-    i_empty = mxp.asarray([], dtype=mxp.bool)  # special case
-    assert_equal(x[i_empty], x[1:1], xp=xp, seed=seed)
+    if "torch" not in xp.__name__:  # torch doesn't implement this
+        i_empty = mxp.asarray([], dtype=mxp.bool)  # special case
+        assert_equal(x[i_empty], x[1:1], xp=xp, seed=seed)
 
     # __setitem__
     x2 = mxp.asarray(x, copy=True)
@@ -555,10 +556,11 @@ def test_boolean_indexing(xp, seed=None):
     ref = mxp.asarray(data, mask=mask)
     assert_equal(x2, ref, xp=xp, seed=seed)
 
-    x2 = mxp.asarray(x, copy=True)
-    x2[i_empty] = 9
-    x2[i_empty] = mxp.asarray(9, mask=True)
-    assert_equal(x2, x, xp=xp, seed=seed)
+    if "torch" not in xp.__name__:  # torch doesn't implement this
+        x2 = mxp.asarray(x, copy=True)
+        x2[i_empty] = 9
+        x2[i_empty] = mxp.asarray(9, mask=True)
+        assert_equal(x2, x, xp=xp, seed=seed)
 
 
 @pytest.mark.parametrize("dtype", dtypes_all)
@@ -1399,4 +1401,4 @@ def test_gh99(xp):
 def test_test():
     # dev tool to reproduce a particular failure of a `parametrize`d test
     seed = 91803015965563856304156452253329804912
-    test_nonzero("complex128", torch, seed=seed)
+    test_nonzero("complex128", np, seed=seed)

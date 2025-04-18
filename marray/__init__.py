@@ -58,8 +58,7 @@ def masked_namespace(xp):
             self._ndim = data.ndim
             self._shape = data.shape
             # accommodate PyTorch, Dask
-            _size = math.prod((math.nan if i is None else i) for i in data.shape)
-            self._size = None if math.isnan(_size) else _size
+            self._size = _get_size(data)
 
             self._mask = mask
             self._xp = xp
@@ -129,7 +128,7 @@ def masked_namespace(xp):
             return MArray(self.data[i], (self.mask | key_mask)[i])
 
         def __getitem__(self, key):
-            if _is_boolean(key, xp) and getattr(key, 'size', 1) > 0:
+            if _is_boolean(key, xp) and _get_size(key) > 0:
                 return self._get_item_bool(key)
             key = self._validate_key(key)
             return MArray(self.data[key], self.mask[key])
@@ -145,7 +144,7 @@ def masked_namespace(xp):
             return self.data.__setitem__(i, other_data)
 
         def __setitem__(self, key, other):
-            if _is_boolean(key, xp) and getattr(key, 'size', 1) > 0:
+            if _is_boolean(key, xp) and _get_size(key) > 0:
                 return self._set_item_bool(key, other)
             key = self._validate_key(key)
             self.mask[key] = getattr(other, 'mask', False)
@@ -738,3 +737,9 @@ def _is_boolean(x, xp):
     cond2 = isinstance(x, list) and xp.isdtype(xp.asarray(x).dtype, "bool")
     cond3 = hasattr(x, 'dtype') and xp.isdtype(x.dtype, "bool")
     return cond1 or cond2 or cond3
+
+
+def _get_size(x):
+    shape = getattr(x, 'shape', ())
+    size = math.prod((math.nan if i is None else i) for i in shape)
+    return None if math.isnan(size) else size
