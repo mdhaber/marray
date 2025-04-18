@@ -134,7 +134,8 @@ def masked_namespace(xp):
 
         ## Visualization ##
         def __repr__(self):
-            data_str = repr(self.data)
+            data = xp.where(self.mask, xp.asarray(False, dtype=self.dtype), self.data)
+            data_str = repr(data)
             data_str = _mask_repr(data_str, self.mask)
             mask_str = repr(self.mask)
 
@@ -146,7 +147,8 @@ def masked_namespace(xp):
                 return f"MArray(\n{data_str},\n{mask_str}\n)"
 
         def __str__(self):
-            data_str = repr(self.data)
+            data = xp.where(self.mask, xp.asarray(False, dtype=self.dtype), self.data)
+            data_str = repr(data)
             data_str = _mask_str(data_str, self.mask)
             return data_str
 
