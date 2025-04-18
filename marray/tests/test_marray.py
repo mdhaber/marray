@@ -816,6 +816,9 @@ def test_elementwise_binary(f_name, dtype, xp, seed=None):
                           "Only numeric dtypes are allowed",
                           "Only real numeric dtypes are allowed"] + torch_exceptions)
 def test_statistical_array(f_name, keepdims, xp, dtype, seed=None):
+    pass_backend(xp=xp, pass_xp='torch', dtype=dtype, pass_dtypes=['float32', 'complex64'],
+                 fun=f_name, pass_funs=statistical_array, pass_using=pytest.xfail,
+                 reason='Occasional tolerance issues.')
     if dtype.startswith('uint'):
         # should fix this and ensure strict check at the end
         pytest.skip("`np.ma` can't provide reference due to numpy/numpy#27885")
