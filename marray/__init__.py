@@ -505,7 +505,7 @@ def masked_namespace(xp):
             mask = (res.values == sentinel) if any_masked else None
             result_list = []
             for res_i, field_i in zip(res, fields):
-                mask_i = None if field_i == 'inverse_indices' else mask
+                mask_i = mask if field_i == 'values' else None
                 result_list.append(MArray(res_i, mask=mask_i))
             return result_class(*result_list)
 
