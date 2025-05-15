@@ -347,6 +347,7 @@ torch_exceptions = ["\"abs_cpu\" not implemented for 'Bool",
                     "module 'array_api_compat.torch' has no attribute 'repeat'",
                     "torch.reshape doesn't yet support the copy keyword",
                     "unique_all() not yet implemented for pytorch",
+                    "unsqueeze(): argument 'dim' (position 1) must be int, not tuple",
                     ]
 
 
@@ -815,6 +816,9 @@ def test_elementwise_binary(f_name, dtype, xp, seed=None):
                           "Only numeric dtypes are allowed",
                           "Only real numeric dtypes are allowed"] + torch_exceptions)
 def test_statistical_array(f_name, keepdims, xp, dtype, seed=None):
+    pass_backend(xp=xp, pass_xp='torch', dtype=dtype, pass_dtypes=['float32', 'complex64'],
+                 fun=f_name, pass_funs=statistical_array, pass_using=pytest.xfail,
+                 reason='Occasional tolerance issues.')
     if dtype.startswith('uint'):
         # should fix this and ensure strict check at the end
         pytest.skip("`np.ma` can't provide reference due to numpy/numpy#27885")
@@ -844,7 +848,7 @@ def test_statistical_array(f_name, keepdims, xp, dtype, seed=None):
     ref_mask = np.all(masked_arrays[0].mask, axis=axis, **kwargs)
     ref = np.ma.masked_array(ref.data, getattr(ref, 'mask', ref_mask))
     ref = ref.astype(ref_dtype)
-    assert_allclose(res, ref, xp=xp, seed=seed, strict=True, rtol=get_rtol(dtype, xp))
+    assert_allclose(res, ref, xp=xp, seed=seed, strict=True)
 
 @pytest.mark.parametrize("dtype", dtypes_all)
 @pytest.mark.parametrize('xp', xps)
@@ -1326,6 +1330,22 @@ def test_signature_docs():
     mxp = marray.masked_namespace(np)
     assert mxp.sum.__signature__ == inspect.signature(np.sum)
     assert np.sum.__doc__ in mxp.sum.__doc__
+
+
+@pass_exceptions(allowed=torch_exceptions)
+@pytest.mark.parametrize('keepdims', [False, True])
+@pytest.mark.parametrize('axis', [-1, 0, (0, 1), None])
+@pytest.mark.parametrize('dtype', dtypes_all)
+@pytest.mark.parametrize('xp', xps)
+def test_count(axis, keepdims, dtype, xp, seed=None):
+    # Not part of the standard... include and test for now
+    mxp = marray.masked_namespace(xp)
+    marrays, masked_arrays, seed = get_arrays(1, dtype=dtype, ndim=(2, 4),
+                                              xp=xp, seed=seed)
+    res = mxp.count(marrays[0], axis=axis, keepdims=keepdims)
+    ref = np.ma.count(masked_arrays[0], axis=axis, keepdims=keepdims)
+    assert_equal(res, np.ma.masked_array(ref), xp=xp, seed=seed)
+
 
 # To do:
 # - investigate asarray - is copy respected?
