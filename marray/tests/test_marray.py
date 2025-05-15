@@ -1209,16 +1209,18 @@ def test_set(f_name, dtype, xp, seed=None):
         assert_equal(res_values, ref_values, xp=xp, seed=seed)
 
     if hasattr(res, 'counts'):
-        ref_counts = np.ma.masked_array(np.asarray(ref.counts), mask=ref_mask)
+        ref_counts = np.ma.masked_array(np.asarray(ref.counts), mask=False)
         assert_equal(res.counts, ref_counts, xp=xp, seed=seed)
 
     if hasattr(res, 'indices'):
-        ref_counts = np.ma.masked_array(np.asarray(ref.indices), mask=ref_mask)
-        assert_equal(res.indices, ref_counts, xp=xp, seed=seed)
+        ref_indices = np.ma.masked_array(np.asarray(ref.indices), mask=False)
+        assert_equal(res.indices, ref_indices, xp=xp, seed=seed)
+        assert_equal(mxp.reshape(x, (-1,))[res.indices], res.values, xp=xp, seed=seed)
 
     if hasattr(res, 'inverse_indices'):
-        ref_counts = np.ma.masked_array(np.asarray(ref.inverse_indices), mask=False)
-        assert_equal(res.inverse_indices, ref_counts, xp=xp, seed=seed)
+        ref_inverse = np.ma.masked_array(np.asarray(ref.inverse_indices), mask=False)
+        assert_equal(res.inverse_indices, ref_inverse, xp=xp, seed=seed)
+        assert_equal(res.values[res.inverse_indices], x, xp=xp, seed=seed)
 
 
 @pytest.mark.parametrize("f_name", ['sort', 'argsort'])
