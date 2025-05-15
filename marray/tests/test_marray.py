@@ -347,6 +347,7 @@ torch_exceptions = ["\"abs_cpu\" not implemented for 'Bool",
                     "module 'array_api_compat.torch' has no attribute 'repeat'",
                     "torch.reshape doesn't yet support the copy keyword",
                     "unique_all() not yet implemented for pytorch",
+                    "unsqueeze(): argument 'dim' (position 1) must be int, not tuple",
                     ]
 
 
@@ -463,7 +464,7 @@ def test_scalar_conversion(type_val, mask, xp):
 
 @pytest.mark.parametrize('xp', xps)
 def test_indexing(xp):
-    # The implementations of `__getitem__` and `__setitem__` are trivial.
+    # The implementations of `__getitem__` and `__setitem__` are simple.
     # This does not make them easy to test exhaustively, but it does make
     # them easy to fix if a shortcoming is identified. Include a very basic
     # test for now, and improve as needed.
@@ -507,6 +508,60 @@ def test_indexing(xp):
         i = mxp.ones(4, dtype=mxp.bool)
         j = i[..., i]
         assert mxp.all(i == j)
+
+@pytest.mark.parametrize('xp', xps)
+def test_boolean_indexing(xp, seed=None):
+    # The implementations of `__getitem__` and `__setitem__` are simple.
+    # This does not make them easy to test exhaustively, but it does make
+    # them easy to fix if a shortcoming is identified. Include a very basic
+    # test for now, and improve as needed.
+    mxp = marray.masked_namespace(xp)
+
+    x_val = np.arange(8)
+    x_mask = [False, False, False, False, True, True, True, True]
+    i_val = [False, False, True, True, False, False, True, True]
+    i_mask = [False, True, False, True, False, True, False, True]
+    x = mxp.asarray(x_val, mask=x_mask)
+    i = mxp.asarray(i_val, mask=i_mask)
+    j = ~i
+
+    # __getitem__
+    ref = mxp.asarray(x.data[i.data | i.mask], mask=(x.mask | i.mask)[i.data | i.mask])
+    assert_equal(x[i], ref, xp=xp, seed=seed)
+
+    ref = mxp.asarray(x.data[j.data | j.mask], mask=(x.mask | j.mask)[j.data | j.mask])
+    assert_equal(x[j], ref, xp=xp, seed=seed)
+
+    if "torch" not in xp.__name__:  # torch doesn't implement this
+        i_empty = mxp.asarray([], dtype=mxp.bool)  # special case
+        assert_equal(x[i_empty], x[1:1], xp=xp, seed=seed)
+
+    # __setitem__
+    x2 = mxp.asarray(x, copy=True)
+    x2[i] = 9
+    data = xp.asarray(x.data, copy=True)
+    mask = xp.asarray(x.mask, copy=True)
+    data[i.data & ~i.mask] = 9
+    mask[i.data & ~i.mask] = False
+    mask[i.mask] = True
+    ref = mxp.asarray(data, mask=mask)
+    assert_equal(x2, ref, xp=xp, seed=seed)
+
+    x2 = mxp.asarray(x, copy=True)
+    x2[i] = mxp.asarray(9, mask=True)
+    data = xp.asarray(x.data, copy=True)
+    mask = xp.asarray(x.mask, copy=True)
+    # Data assignment doesn't matter, since `other` is masked
+    mask[i.data] = True
+    mask[i.mask] = True
+    ref = mxp.asarray(data, mask=mask)
+    assert_equal(x2, ref, xp=xp, seed=seed)
+
+    if "torch" not in xp.__name__:  # torch doesn't implement this
+        x2 = mxp.asarray(x, copy=True)
+        x2[i_empty] = 9
+        x2[i_empty] = mxp.asarray(9, mask=True)
+        assert_equal(x2, x, xp=xp, seed=seed)
 
 
 @pytest.mark.parametrize("dtype", dtypes_all)
@@ -815,6 +870,9 @@ def test_elementwise_binary(f_name, dtype, xp, seed=None):
                           "Only numeric dtypes are allowed",
                           "Only real numeric dtypes are allowed"] + torch_exceptions)
 def test_statistical_array(f_name, keepdims, xp, dtype, seed=None):
+    pass_backend(xp=xp, pass_xp='torch', dtype=dtype, pass_dtypes=['float32', 'complex64'],
+                 fun=f_name, pass_funs=statistical_array, pass_using=pytest.xfail,
+                 reason='Occasional tolerance issues.')
     if dtype.startswith('uint'):
         # should fix this and ensure strict check at the end
         pytest.skip("`np.ma` can't provide reference due to numpy/numpy#27885")
@@ -844,7 +902,7 @@ def test_statistical_array(f_name, keepdims, xp, dtype, seed=None):
     ref_mask = np.all(masked_arrays[0].mask, axis=axis, **kwargs)
     ref = np.ma.masked_array(ref.data, getattr(ref, 'mask', ref_mask))
     ref = ref.astype(ref_dtype)
-    assert_allclose(res, ref, xp=xp, seed=seed, strict=True, rtol=get_rtol(dtype, xp))
+    assert_allclose(res, ref, xp=xp, seed=seed, strict=True)
 
 @pytest.mark.parametrize("dtype", dtypes_all)
 @pytest.mark.parametrize('xp', xps)
@@ -1145,12 +1203,11 @@ def test_astype(dtype_in, dtype_out, copy, xp, seed=None):
     assert_equal(res, ref, xp=xp, seed=seed)
 
 
-@pytest.mark.parametrize('xp', xps)
-def test_asarray_device(xp):
+def test_asarray_device(xp=np):
     mxp = marray.masked_namespace(xp)
-    message = "`device` argument is not implemented"
-    with pytest.raises(NotImplementedError, match=message):
-        mxp.asarray(xp.asarray([1, 2, 3]), device='coconut')
+    device = 'cpu'
+    x = mxp.asarray(xp.asarray([1, 2, 3]), device=device)
+    assert x.device == x.data.device == x.mask.device == device
 
 
 @pytest.mark.parametrize('dtype', dtypes_all)
@@ -1210,16 +1267,18 @@ def test_set(f_name, dtype, xp, seed=None):
         assert_equal(res_values, ref_values, xp=xp, seed=seed)
 
     if hasattr(res, 'counts'):
-        ref_counts = np.ma.masked_array(np.asarray(ref.counts), mask=ref_mask)
+        ref_counts = np.ma.masked_array(np.asarray(ref.counts), mask=False)
         assert_equal(res.counts, ref_counts, xp=xp, seed=seed)
 
     if hasattr(res, 'indices'):
-        ref_counts = np.ma.masked_array(np.asarray(ref.indices), mask=ref_mask)
-        assert_equal(res.indices, ref_counts, xp=xp, seed=seed)
+        ref_indices = np.ma.masked_array(np.asarray(ref.indices), mask=False)
+        assert_equal(res.indices, ref_indices, xp=xp, seed=seed)
+        assert_equal(mxp.reshape(x, (-1,))[res.indices], res.values, xp=xp, seed=seed)
 
     if hasattr(res, 'inverse_indices'):
-        ref_counts = np.ma.masked_array(np.asarray(ref.inverse_indices), mask=False)
-        assert_equal(res.inverse_indices, ref_counts, xp=xp, seed=seed)
+        ref_inverse = np.ma.masked_array(np.asarray(ref.inverse_indices), mask=False)
+        assert_equal(res.inverse_indices, ref_inverse, xp=xp, seed=seed)
+        assert_equal(res.values[res.inverse_indices], x, xp=xp, seed=seed)
 
 
 @pytest.mark.parametrize("f_name", ['sort', 'argsort'])
@@ -1326,6 +1385,22 @@ def test_signature_docs():
     assert mxp.sum.__signature__ == inspect.signature(np.sum)
     assert np.sum.__doc__ in mxp.sum.__doc__
 
+
+@pass_exceptions(allowed=torch_exceptions)
+@pytest.mark.parametrize('keepdims', [False, True])
+@pytest.mark.parametrize('axis', [-1, 0, (0, 1), None])
+@pytest.mark.parametrize('dtype', dtypes_all)
+@pytest.mark.parametrize('xp', xps)
+def test_count(axis, keepdims, dtype, xp, seed=None):
+    # Not part of the standard... include and test for now
+    mxp = marray.masked_namespace(xp)
+    marrays, masked_arrays, seed = get_arrays(1, dtype=dtype, ndim=(2, 4),
+                                              xp=xp, seed=seed)
+    res = mxp.count(marrays[0], axis=axis, keepdims=keepdims)
+    ref = np.ma.count(masked_arrays[0], axis=axis, keepdims=keepdims)
+    assert_equal(res, np.ma.masked_array(ref), xp=xp, seed=seed)
+
+
 # To do:
 # - investigate asarray - is copy respected?
 
@@ -1347,4 +1422,4 @@ def test_gh99(xp):
 def test_test():
     # dev tool to reproduce a particular failure of a `parametrize`d test
     seed = 91803015965563856304156452253329804912
-    test_nonzero("complex128", torch, seed=seed)
+    test_nonzero("complex128", np, seed=seed)

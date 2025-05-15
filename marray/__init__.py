@@ -47,19 +47,19 @@ def masked_namespace(xp):
 
         def __init__(self, data, mask=None):
             data = xp.asarray(_get_data(data))
-            mask = (xp.zeros(data.shape, dtype=xp.bool) if mask is None
-                    else xp.asarray(mask, dtype=xp.bool))
+            device = getattr(data, "device", None)  # accommodate Dask
+            mask = (xp.zeros(data.shape, dtype=xp.bool, device=device) if mask is None
+                    else xp.asarray(mask, dtype=xp.bool, device=device))
             if mask.shape != data.shape:  # avoid copy if possible
                 mask = xp.asarray(xp.broadcast_to(mask, data.shape), copy=True)
             self._data = data
             self._dtype = data.dtype
-            self._device = getattr(data, "device", None)  # accommodate Dask
+            self._device = device
             # assert data.device == mask.device
             self._ndim = data.ndim
             self._shape = data.shape
             # accommodate PyTorch, Dask
-            _size = math.prod((math.nan if i is None else i) for i in data.shape)
-            self._size = None if math.isnan(_size) else _size
+            self._size = _get_size(data)
 
             self._mask = mask
             self._xp = xp
@@ -112,19 +112,41 @@ def masked_namespace(xp):
                 return tuple(self._validate_key(key_i) for key_i in key)
 
             if hasattr(key, 'mask') and xp.any(key.mask):
-                message = ("Correct behavior for indexing with a masked array is "
-                           "ambiguous, and no convention is supported at this time.")
+                message = ("Correct behavior for indexing with a masked array "
+                           "is ambiguous, and no convention is supported at this time.")
                 raise NotImplementedError(message)
             elif hasattr(key, 'mask'):
                 key = key.data
+
             return key
 
         ## Indexing ##
+        def _get_item_bool(self, key):
+            # Returns elements for each element of `key` that is True OR masked
+            # Elements are masked wherever either `self` or `key` were masked
+            key_data, key_mask = _get_data_mask(key)
+            i = key_data | key_mask
+            return MArray(self.data[i], (self.mask | key_mask)[i])
+
         def __getitem__(self, key):
+            if _is_boolean(key, xp) and _get_size(key) > 0:
+                return self._get_item_bool(key)
             key = self._validate_key(key)
             return MArray(self.data[key], self.mask[key])
 
+        def _set_item_bool(self, key, other):
+            # Sets elements for each element of `key` that is True OR masked
+            # Elements are masked wherever either `other` or `key` were masked
+            key_data, key_mask = _get_data_mask(key)
+            other_data, other_mask = _get_data_mask(other)
+            i = key_data | key_mask
+            mask = xp.broadcast_to(xp.asarray(other_mask | key_mask), self.shape)
+            self.mask[i] = mask[i]
+            return self.data.__setitem__(i, other_data)
+
         def __setitem__(self, key, other):
+            if _is_boolean(key, xp) and _get_size(key) > 0:
+                return self._set_item_bool(key, other)
             key = self._validate_key(key)
             self.mask[key] = getattr(other, 'mask', False)
             return self.data.__setitem__(key, _get_data(other))
@@ -134,7 +156,8 @@ def masked_namespace(xp):
 
         ## Visualization ##
         def __repr__(self):
-            data_str = repr(self.data)
+            data = xp.where(self.mask, xp.asarray(False, dtype=self.dtype), self.data)
+            data_str = repr(data)
             data_str = _mask_repr(data_str, self.mask)
             mask_str = repr(self.mask)
 
@@ -146,7 +169,8 @@ def masked_namespace(xp):
                 return f"MArray(\n{data_str},\n{mask_str}\n)"
 
         def __str__(self):
-            data_str = repr(self.data)
+            data = xp.where(self.mask, xp.asarray(False, dtype=self.dtype), self.data)
+            data_str = repr(data)
             data_str = _mask_str(data_str, self.mask)
             return data_str
 
@@ -252,13 +276,11 @@ def masked_namespace(xp):
 
     ## Creation Functions ##
     def asarray(obj, /, *, mask=None, dtype=None, device=None, copy=None):
-        if device is not None:
-            raise NotImplementedError("`device` argument is not implemented")
-
         data = _get_data(obj)
         data = xp.asarray(data, dtype=dtype, device=device, copy=copy)
+        device = getattr(data, 'device', None)
 
-        mask = (getattr(obj, 'mask', xp.full(data.shape, False))
+        mask = (getattr(obj, 'mask', xp.zeros(data.shape, dtype=xp.bool, device=device))
                 if mask is None else mask)
         mask = xp.asarray(mask, dtype=xp.bool, device=device, copy=copy)
 
@@ -519,7 +541,7 @@ def masked_namespace(xp):
             mask = (res.values == sentinel) if any_masked else None
             result_list = []
             for res_i, field_i in zip(res, fields):
-                mask_i = None if field_i == 'inverse_indices' else mask
+                mask_i = mask if field_i == 'values' else None
                 result_list.append(MArray(res_i, mask=mask_i))
             return result_class(*result_list)
 
@@ -578,8 +600,7 @@ def masked_namespace(xp):
 
     def count(x, axis=None, keepdims=False):
         x = asarray(x)
-        not_mask = xp.astype(~x.mask, xp.uint64)
-        return xp.sum(not_mask, axis=axis, keepdims=keepdims, dtype=xp.uint64)
+        return asarray(xp.count_nonzero(~x.mask, axis=axis, keepdims=keepdims))
 
     def _cumulative_op(x, *args, _identity, _op, **kwargs):
         x = asarray(x)
@@ -608,7 +629,7 @@ def masked_namespace(xp):
 
     def mean(x, axis=None, keepdims=False):
         s = mod.sum(x, axis=axis, keepdims=keepdims)
-        dtype = xp.uint64 if xp.isdtype(s.dtype, ("bool", "integral")) else s.dtype
+        dtype = xp.int64 if xp.isdtype(s.dtype, ("bool", "integral")) else s.dtype
         n = mod.astype(mod.count(x, axis=axis, keepdims=keepdims), dtype)
         return s / n
 
@@ -617,7 +638,7 @@ def masked_namespace(xp):
         xm = x - m
         xmc = mod.conj(xm) if mod.isdtype(xm.dtype, 'complex floating') else xm
         s = mod.sum(xm*xmc, axis=axis, keepdims=keepdims)
-        dtype = xp.uint64 if xp.isdtype(s.dtype, ("bool", "integral")) else s.dtype
+        dtype = xp.int64 if xp.isdtype(s.dtype, ("bool", "integral")) else s.dtype
         n = mod.astype(mod.count(x, axis=axis, keepdims=keepdims), dtype)
         out = s / (n - correction)
         out = mod.real(out) if mod.isdtype(xm.dtype, 'complex floating') else out
@@ -724,3 +745,16 @@ def _get_mask(x):
 def _get_data_mask(x):
     # safely unpack data and (implied) mask from essentially any type
     return _get_data(x), _get_mask(x)
+
+
+def _is_boolean(x, xp):
+    cond1 = isinstance(x, bool)
+    cond2 = isinstance(x, list) and xp.isdtype(xp.asarray(x).dtype, "bool")
+    cond3 = hasattr(x, 'dtype') and xp.isdtype(x.dtype, "bool")
+    return cond1 or cond2 or cond3
+
+
+def _get_size(x):
+    shape = getattr(x, 'shape', ())
+    size = math.prod((math.nan if i is None else i) for i in shape)
+    return None if math.isnan(size) else size
