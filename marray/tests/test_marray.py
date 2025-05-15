@@ -464,7 +464,7 @@ def test_scalar_conversion(type_val, mask, xp):
 
 @pytest.mark.parametrize('xp', xps)
 def test_indexing(xp):
-    # The implementations of `__getitem__` and `__setitem__` are trivial.
+    # The implementations of `__getitem__` and `__setitem__` are simple.
     # This does not make them easy to test exhaustively, but it does make
     # them easy to fix if a shortcoming is identified. Include a very basic
     # test for now, and improve as needed.
@@ -508,6 +508,60 @@ def test_indexing(xp):
         i = mxp.ones(4, dtype=mxp.bool)
         j = i[..., i]
         assert mxp.all(i == j)
+
+@pytest.mark.parametrize('xp', xps)
+def test_boolean_indexing(xp, seed=None):
+    # The implementations of `__getitem__` and `__setitem__` are simple.
+    # This does not make them easy to test exhaustively, but it does make
+    # them easy to fix if a shortcoming is identified. Include a very basic
+    # test for now, and improve as needed.
+    mxp = marray.masked_namespace(xp)
+
+    x_val = np.arange(8)
+    x_mask = [False, False, False, False, True, True, True, True]
+    i_val = [False, False, True, True, False, False, True, True]
+    i_mask = [False, True, False, True, False, True, False, True]
+    x = mxp.asarray(x_val, mask=x_mask)
+    i = mxp.asarray(i_val, mask=i_mask)
+    j = ~i
+
+    # __getitem__
+    ref = mxp.asarray(x.data[i.data | i.mask], mask=(x.mask | i.mask)[i.data | i.mask])
+    assert_equal(x[i], ref, xp=xp, seed=seed)
+
+    ref = mxp.asarray(x.data[j.data | j.mask], mask=(x.mask | j.mask)[j.data | j.mask])
+    assert_equal(x[j], ref, xp=xp, seed=seed)
+
+    if "torch" not in xp.__name__:  # torch doesn't implement this
+        i_empty = mxp.asarray([], dtype=mxp.bool)  # special case
+        assert_equal(x[i_empty], x[1:1], xp=xp, seed=seed)
+
+    # __setitem__
+    x2 = mxp.asarray(x, copy=True)
+    x2[i] = 9
+    data = xp.asarray(x.data, copy=True)
+    mask = xp.asarray(x.mask, copy=True)
+    data[i.data & ~i.mask] = 9
+    mask[i.data & ~i.mask] = False
+    mask[i.mask] = True
+    ref = mxp.asarray(data, mask=mask)
+    assert_equal(x2, ref, xp=xp, seed=seed)
+
+    x2 = mxp.asarray(x, copy=True)
+    x2[i] = mxp.asarray(9, mask=True)
+    data = xp.asarray(x.data, copy=True)
+    mask = xp.asarray(x.mask, copy=True)
+    # Data assignment doesn't matter, since `other` is masked
+    mask[i.data] = True
+    mask[i.mask] = True
+    ref = mxp.asarray(data, mask=mask)
+    assert_equal(x2, ref, xp=xp, seed=seed)
+
+    if "torch" not in xp.__name__:  # torch doesn't implement this
+        x2 = mxp.asarray(x, copy=True)
+        x2[i_empty] = 9
+        x2[i_empty] = mxp.asarray(9, mask=True)
+        assert_equal(x2, x, xp=xp, seed=seed)
 
 
 @pytest.mark.parametrize("dtype", dtypes_all)
