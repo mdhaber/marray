@@ -536,32 +536,33 @@ def test_boolean_indexing(xp, seed=None):
         i_empty = mxp.asarray([], dtype=mxp.bool)  # special case
         assert_equal(x[i_empty], x[1:1], xp=xp, seed=seed)
 
-    # __setitem__
-    x2 = mxp.asarray(x, copy=True)
-    x2[i] = 9
-    data = xp.asarray(x.data, copy=True)
-    mask = xp.asarray(x.mask, copy=True)
-    data[i.data & ~i.mask] = 9
-    mask[i.data & ~i.mask] = False
-    mask[i.mask] = True
-    ref = mxp.asarray(data, mask=mask)
-    assert_equal(x2, ref, xp=xp, seed=seed)
-
-    x2 = mxp.asarray(x, copy=True)
-    x2[i] = mxp.asarray(9, mask=True)
-    data = xp.asarray(x.data, copy=True)
-    mask = xp.asarray(x.mask, copy=True)
-    # Data assignment doesn't matter, since `other` is masked
-    mask[i.data] = True
-    mask[i.mask] = True
-    ref = mxp.asarray(data, mask=mask)
-    assert_equal(x2, ref, xp=xp, seed=seed)
-
-    if "torch" not in xp.__name__:  # torch doesn't implement this
-        x2 = mxp.asarray(x, copy=True)
-        x2[i_empty] = 9
-        x2[i_empty] = mxp.asarray(9, mask=True)
-        assert_equal(x2, x, xp=xp, seed=seed)
+    # Reverted this part of gh-108 to address gh-123
+    # # __setitem__
+    # x2 = mxp.asarray(x, copy=True)
+    # x2[i] = 9
+    # data = xp.asarray(x.data, copy=True)
+    # mask = xp.asarray(x.mask, copy=True)
+    # data[i.data & ~i.mask] = 9
+    # mask[i.data & ~i.mask] = False
+    # mask[i.mask] = True
+    # ref = mxp.asarray(data, mask=mask)
+    # assert_equal(x2, ref, xp=xp, seed=seed)
+    #
+    # x2 = mxp.asarray(x, copy=True)
+    # x2[i] = mxp.asarray(9, mask=True)
+    # data = xp.asarray(x.data, copy=True)
+    # mask = xp.asarray(x.mask, copy=True)
+    # # Data assignment doesn't matter, since `other` is masked
+    # mask[i.data] = True
+    # mask[i.mask] = True
+    # ref = mxp.asarray(data, mask=mask)
+    # assert_equal(x2, ref, xp=xp, seed=seed)
+    #
+    # if "torch" not in xp.__name__:  # torch doesn't implement this
+    #     x2 = mxp.asarray(x, copy=True)
+    #     x2[i_empty] = 9
+    #     x2[i_empty] = mxp.asarray(9, mask=True)
+    #     assert_equal(x2, x, xp=xp, seed=seed)
 
 
 @pytest.mark.parametrize("dtype", dtypes_all)

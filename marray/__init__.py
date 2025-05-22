@@ -2,7 +2,7 @@
 Masked versions of array API compatible arrays
 """
 
-__version__ = "0.0.9"
+__version__ = "0.0.10"
 
 import collections
 import dataclasses
@@ -134,19 +134,7 @@ def masked_namespace(xp):
             key = self._validate_key(key)
             return MArray(self.data[key], self.mask[key])
 
-        def _set_item_bool(self, key, other):
-            # Sets elements for each element of `key` that is True OR masked
-            # Elements are masked wherever either `other` or `key` were masked
-            key_data, key_mask = _get_data_mask(key)
-            other_data, other_mask = _get_data_mask(other)
-            i = key_data | key_mask
-            mask = xp.broadcast_to(xp.asarray(other_mask | key_mask), self.shape)
-            self.mask[i] = mask[i]
-            return self.data.__setitem__(i, other_data)
-
         def __setitem__(self, key, other):
-            if _is_boolean(key, xp) and _get_size(key) > 0:
-                return self._set_item_bool(key, other)
             key = self._validate_key(key)
             self.mask[key] = getattr(other, 'mask', False)
             return self.data.__setitem__(key, _get_data(other))
