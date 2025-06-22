@@ -20,8 +20,19 @@ __all__ = ["masked_namespace"]
 
 
 def __getattr__(name):
+
+    base = ""
+    if name in {'torch', 'cupy'}:
+        try:
+            import array_api_compat
+            base = 'array_api_compat.'
+        except ModuleNotFoundError as e:
+            message = ("`array_api_compat` is required when using `marray` with ",
+                       f"backend `{name}`. Please install `array_api_compat`.")
+            raise ModuleNotFoundError(message)
+
     try:
-        xp = importlib.import_module(name)
+        xp = importlib.import_module(base+name)
         mod = masked_namespace(xp)
         sys.modules[f"marray.{name}"] = mod
         return mod
