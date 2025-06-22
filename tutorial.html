@@ -399,7 +399,7 @@ document.write(`
   <section class="tex2jax_ignore mathjax_ignore" id="tutorial">
 <h1>Tutorial<a class="headerlink" href="#tutorial" title="Link to this heading">#</a></h1>
 <p>MArray is a package for extending your favorite <a class="reference external" href="https://data-apis.org/array-api/latest/index.html">Python Array API Standard</a> compatible library with mask capabilities. Motivation for masked arrays can be found at <a class="reference external" href="https://numpy.org/devdocs/reference/maskedarray.generic.html#what-is-a-masked-array">“What is a masked array?”</a>.</p>
-<p>MArray is easy to install with <code class="docutils literal notranslate"><span class="pre">pip</span></code>, and it has no required dependencies.</p>
+<p>MArray is easy to install with <code class="docutils literal notranslate"><span class="pre">pip</span></code>, and it has no required dependencies. (However, <code class="docutils literal notranslate"><span class="pre">array_api_compat</span></code> is needed when using backends that are not yet array API compatible, such as PyTorch and CuPy.)</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
 <div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># !pip install marray</span>

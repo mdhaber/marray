@@ -17,7 +17,7 @@ kernelspec:
 
 MArray is a package for extending your favorite [Python Array API Standard](https://data-apis.org/array-api/latest/index.html) compatible library with mask capabilities. Motivation for masked arrays can be found at ["What is a masked array?"](https://numpy.org/devdocs/reference/maskedarray.generic.html#what-is-a-masked-array).
 
-MArray is easy to install with `pip`, and it has no required dependencies.
+MArray is easy to install with `pip`, and it has no required dependencies. (However, `array_api_compat` is needed when using backends that are not yet array API compatible, such as PyTorch and CuPy.)
 
 ```{code-cell} ipython3
 # !pip install marray
