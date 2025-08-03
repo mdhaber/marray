@@ -487,7 +487,7 @@ def masked_namespace(xp):
     def nonzero(x, /):
         x = asarray(x)
         data = xp.asarray(x.data, copy=True)
-        data[x.mask] = 0
+        data[x.mask] = xp.asarray(0, dtype=data.dtype)
         res = xp.nonzero(data)
         return tuple(MArray(resi) for resi in res)
 
@@ -590,7 +590,7 @@ def masked_namespace(xp):
                             'any': False}
             x = asarray(x)
             data = xp.asarray(x.data, copy=True)
-            data[x.mask] = replacements[name]
+            data[x.mask] = xp.asarray(replacements[name], dtype=data.dtype)
             fun = getattr(xp, name)
             res = fun(data, *args, axis=axis, **kwargs)
             mask = xp.all(x.mask, axis=axis, keepdims=kwargs.get('keepdims', False))
@@ -609,7 +609,7 @@ def masked_namespace(xp):
 
         data = xp.asarray(x.data, copy=True)
         mask = x.mask
-        data[mask] = _identity
+        data[mask] = xp.asarray(_identity, dtype=data.dtype)
         res = _op(data, *args, **kwargs)
 
         if kwargs.get('include_initial', False):
