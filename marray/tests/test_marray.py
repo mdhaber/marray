@@ -1041,7 +1041,7 @@ def test_tri(f_name, dtype, xp, seed=None):
 @pass_exceptions(allowed=torch_exceptions)
 def test_meshgrid(indexing, dtype, xp, seed=None):
     pass_backend(xp=xp, pass_xp='torch', pass_using=pytest.xfail,
-                 reason='PyTorch ij indexing no longer working.')
+                 reason='data-apis/array-api-compat#340')
     mxp = marray.masked_namespace(xp)
     rng = np.random.default_rng(seed)
     n = rng.integers(1, 4)
