@@ -682,6 +682,9 @@ def test_inplace_array_binary(f, dtype, xp, seed=None):
                           "ZeroDivisionError"
                           ] + torch_exceptions)
 def test_rarithmetic_binary(f_name, f, dtype, xp, type_, seed=None):
+    pass_backend(xp=xp, pass_xp='strict', dtype=dtype, pass_dtypes=dtypes_all,
+                 pass_using=pytest.skip,
+                 reason='Strict arrays do not support reflected operations')
     pass_backend(xp=xp, pass_xp='torch', dtype=dtype, pass_dtypes=['complex64'],
                  fun=f_name, pass_funs=["x ** y", "x.__pow__(y)"], pass_using=pytest.xfail,
                  reason='Occasional tolerance issues.')
@@ -705,6 +708,9 @@ def test_rarithmetic_binary(f_name, f, dtype, xp, type_, seed=None):
                          + torch_exceptions)
 def test_rarray_binary(dtype, xp, seed=None):
     # very restrictive operator -> limited test
+    pass_backend(xp=xp, pass_xp='strict', dtype=dtype, pass_dtypes=dtypes_all,
+                 pass_using=pytest.skip,
+                 reason='Strict arrays do not support reflected operations')
     mxp = marray.masked_namespace(xp)
     rng = np.random.default_rng(seed)
     data = (rng.random((3, 10, 10))*10).astype(dtype)
@@ -723,6 +729,9 @@ def test_rarray_binary(dtype, xp, seed=None):
 @pytest.mark.parametrize('xp', xps)
 @pass_exceptions(allowed=["Only integer dtypes are allowed in"] + torch_exceptions)
 def test_rbitwise_binary(f, dtype, xp, seed=None):
+    pass_backend(xp=xp, pass_xp='strict', dtype=dtype, pass_dtypes=dtypes_all,
+                 pass_using=pytest.skip,
+                 reason='Strict arrays do not support reflected operations')
     marrays, masked_arrays, seed = get_arrays(2, dtype=dtype, xp=xp, seed=seed)
     res = f(marrays[0].data, marrays[1])
     ref = f(masked_arrays[0].data, masked_arrays[1])
@@ -769,8 +778,11 @@ def test_dtype_inspection_version(f, xp):
 def test_finfo(dtype, xp, seed=None):
     mxp = marray.masked_namespace(xp)
     marrays, _, _ = get_arrays(1, dtype=dtype, xp=xp, seed=seed)
-    dype_mxp, dtype_xp = getattr(mxp, dtype), getattr(xp, dtype)
-    assert mxp.finfo(dype_mxp) == xp.finfo(dtype_xp)
+    dtype_mxp, dtype_xp = getattr(mxp, dtype), getattr(xp, dtype)
+    for attribute in ['bits', 'eps', 'max', 'min', 'smallest_normal', 'dtype']:
+        res = getattr(mxp.finfo(dtype_mxp), attribute)
+        ref = getattr(xp.finfo(dtype_xp), attribute)
+        assert res == ref
     # see numpy/numpy#22977, data_apis/array_api_strict#116
     # assert mxp.finfo(marrays[0]) == xp.finfo(dtype)
 
@@ -1028,6 +1040,8 @@ def test_tri(f_name, dtype, xp, seed=None):
 @pytest.mark.parametrize('xp', xps)
 @pass_exceptions(allowed=torch_exceptions)
 def test_meshgrid(indexing, dtype, xp, seed=None):
+    pass_backend(xp=xp, pass_xp='torch', pass_using=pytest.xfail,
+                 reason='data-apis/array-api-compat#340')
     mxp = marray.masked_namespace(xp)
     rng = np.random.default_rng(seed)
     n = rng.integers(1, 4)
@@ -1121,7 +1135,7 @@ def test_nonzero(dtype, xp, seed=None):
     x, y = marrays[0], masked_arrays[0]
     rng = np.random.default_rng(seed)
     cond = rng.random(marrays[0].shape) > 0.5
-    x[xp.asarray(cond)] = 0
+    x[xp.asarray(cond)] = xp.asarray(0, dtype=x.dtype)
     y[cond] = 0
     res = mxp.nonzero(x)
     ref = np.ma.nonzero(y)
