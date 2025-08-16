@@ -153,17 +153,10 @@ def masked_namespace(xp):
         def __iter__(self):
             return iter(self.data)
 
-        def __copy__(self):
-            return type(self)(
-                data=xp.asarray(self._data, copy=False),
-                mask=xp.asarray(self._mask, copy=False),
-            )
-
         def __deepcopy__(self, memo=None):
-            return type(self)(
-                data=xp.asarray(self._data, copy=True),
-                mask=xp.asarray(self._mask, copy=True),
-            )
+            mxp = self.__array_namespace__()
+
+            return mxp.asarray(self, copy=True)
 
         ## Visualization ##
         def __repr__(self):
