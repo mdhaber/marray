@@ -1429,7 +1429,7 @@ def test_copy(xp):
     np.testing.assert_equal(res._mask, x1._mask)
 
     res[1] = 5
-    res[0].mask = False
+    res.mask[0] = False
 
     np.testing.assert_equal(x1._data, x2._data)
     np.testing.assert_equal(x1._mask, x2._mask)
