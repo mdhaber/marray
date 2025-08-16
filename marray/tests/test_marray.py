@@ -1,3 +1,4 @@
+import copy
 import functools
 import inspect
 import operator
@@ -1415,6 +1416,23 @@ def test_count(axis, keepdims, dtype, xp, seed=None):
     ref = np.ma.count(masked_arrays[0], axis=axis, keepdims=keepdims)
     assert_equal(res, np.ma.masked_array(ref), xp=xp, seed=seed)
 
+@pytest.mark.parametrize('deep', [False, True])
+@pytest.mark.parametrize('xp', xps)
+def test_copy(deep, xp):
+    mxp = marray.masked_namespace(xp)
+
+    x = mxp.asarray([1, 2, 3], mask=[True, False, True])
+
+    if deep:
+        res = copy.deepcopy(x)
+
+        assert res._data is not x._data
+        assert res._mask is not x._mask
+    else:
+        res = copy.copy(x)
+
+        assert res._data is x._data
+        assert res._mask is x._mask
 
 # To do:
 # - investigate asarray - is copy respected?
