@@ -1421,13 +1421,18 @@ def test_copy(xp):
     mxp = marray.masked_namespace(xp)
     seed = 0
 
-    x = mxp.asarray([1, 2, 3], mask=[True, False, True])
+    x1 = mxp.asarray([1, 2, 3], mask=[True, False, True])
+    x2 = mxp.asarray([1, 2, 3], mask=[True, False, True])
 
-    res = copy.deepcopy(x)
-    assert_equal(res, x, xp=xp, seed=seed)
+    res = copy.deepcopy(x1)
+    np.testing.assert_equal(res._data, x1._data)
+    np.testing.assert_equal(res._mask, x1._mask)
 
-    assert res._data is not x._data
-    assert res._mask is not x._mask
+    res[1] = 5
+    res[0].mask = False
+
+    np.testing.assert_equal(x1._data, x2._data)
+    np.testing.assert_equal(x1._mask, x2._mask)
 
 # To do:
 # - investigate asarray - is copy respected?
