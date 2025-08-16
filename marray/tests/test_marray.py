@@ -1425,14 +1425,12 @@ def test_copy(xp):
     x2 = mxp.asarray([1, 2, 3], mask=[True, False, True])
 
     res = copy.deepcopy(x1)
-    np.testing.assert_equal(res._data, x1._data)
-    np.testing.assert_equal(res._mask, x1._mask)
+    assert_equal(res, x1, xp=xp, seed=seed)
 
     res[1] = 5
     res.mask[0] = False
 
-    np.testing.assert_equal(x1._data, x2._data)
-    np.testing.assert_equal(x1._mask, x2._mask)
+    assert_equal(x1, x2, xp=xp, seed=seed)
 
 # To do:
 # - investigate asarray - is copy respected?
