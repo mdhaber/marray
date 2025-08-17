@@ -1417,17 +1417,16 @@ def test_count(axis, keepdims, dtype, xp, seed=None):
     assert_equal(res, np.ma.masked_array(ref), xp=xp, seed=seed)
 
 @pytest.mark.parametrize('xp', xps)
-def test_copy(xp):
+def test_copy(xp, seed=None):
     mxp = marray.masked_namespace(xp)
-    seed = 0
 
-    x1 = mxp.asarray([1, 2, 3], mask=[True, False, True])
-    x2 = mxp.asarray([1, 2, 3], mask=[True, False, True])
+    [x1], _, seed = get_arrays(1, dtype="int32", xp=xp, ndim=(1, 2), seed=seed)
+    x2 = mxp.asarray(x1, copy=True)
 
     res = copy.deepcopy(x1)
     assert_equal(res, x1, xp=xp, seed=seed)
 
-    res[1] = 5
+    res.data[0] = 5
     res.mask[0] = False
 
     assert_equal(x1, x2, xp=xp, seed=seed)
