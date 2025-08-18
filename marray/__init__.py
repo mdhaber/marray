@@ -155,7 +155,6 @@ def masked_namespace(xp):
 
         def __deepcopy__(self, memo=None):
             mxp = self.__array_namespace__()
-
             return mxp.asarray(self, copy=True)
 
         ## Visualization ##

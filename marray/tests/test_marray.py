@@ -1432,8 +1432,6 @@ def test_copy(xp, dtype, seed=None):
     res.mask[:] = False
     assert_equal(x1, x2, xp=xp, seed=seed)
 
-# To do:
-# - investigate asarray - is copy respected?
 
 ### Bug-fix tests
 
