@@ -64,7 +64,7 @@ jobs:
         if: success()
         id: run-tests
         run: |
-          pixi run --environment=ci-upstream-dev tests-log
+          pixi run --environment=ci-upstream-dev tests-log -n 4
 
       - name: Generate and publish a failure report
         if: |
