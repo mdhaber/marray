@@ -56,7 +56,7 @@ jobs:
 
       - uses: prefix-dev/setup-pixi@v0.9.0
         with:
-          pixi-version: v0.39.4
+          pixi-version: v0.52.0
           cache: true
           environments: ci-upstream-dev
 
