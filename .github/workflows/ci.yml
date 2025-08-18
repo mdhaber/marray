@@ -61,7 +61,7 @@ jobs:
           environments: ${{ matrix.environment }}
 
       - name: Run marray tests
-        run: pixi run -e ${{ matrix.environment }} tests-cov
+        run: pixi run -e ${{ matrix.environment }} tests-cov -n 4
 
       - name: Run array-api-tests
-        run: pixi run -e ${{ matrix.environment }} xp-tests
+        run: pixi run -e ${{ matrix.environment }} xp-tests -n 4
