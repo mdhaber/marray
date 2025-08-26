@@ -1,14 +1,16 @@
+import copy
 import functools
 import inspect
+import math
 import operator
 import re
-import math
 
+import array_api_strict as strict
+import numpy as np
 import pytest
+
 import marray
 
-import numpy as np
-import array_api_strict as strict
 xps = [np, strict]
 xps_take_along_axis = []
 
@@ -1268,7 +1270,7 @@ def test_set(f_name, dtype, xp, seed=None):
 
     data[mask] = sentinel
     ref = np.unique_all(np.asarray(data))
-    ref_mask = np.asarray((ref.values == sentinel))
+    ref_mask = np.asarray(ref.values == sentinel)
 
     ref_values = np.ma.masked_array(np.asarray(ref.values), mask=ref_mask)
     res_values = res if f_name == "unique_values" else res.values
@@ -1415,9 +1417,22 @@ def test_count(axis, keepdims, dtype, xp, seed=None):
     ref = np.ma.count(masked_arrays[0], axis=axis, keepdims=keepdims)
     assert_equal(res, np.ma.masked_array(ref), xp=xp, seed=seed)
 
+@pass_exceptions(allowed=torch_exceptions)
+@pytest.mark.parametrize('xp', xps)
+@pytest.mark.parametrize('dtype', dtypes_integral)
+def test_copy(xp, dtype, seed=None):
+    [x1], _, seed = get_arrays(1, dtype=dtype, xp=xp, ndim=(1, 2), seed=seed)
+    [x2], _, seed = get_arrays(1, dtype=dtype, xp=xp, ndim=(1, 2), seed=seed)
 
-# To do:
-# - investigate asarray - is copy respected?
+    # deepcopy equals the original array
+    res = copy.deepcopy(x1)
+    assert_equal(res, x1, xp=xp, seed=seed)
+
+    # changing the copied array doesn't affect the original arrray
+    res.data[:] = 0
+    res.mask[:] = False
+    assert_equal(x1, x2, xp=xp, seed=seed)
+
 
 ### Bug-fix tests
 
