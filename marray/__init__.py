@@ -609,7 +609,7 @@ def masked_namespace(xp):
         x = asarray(x)
         axis = kwargs.get('axis', None)
         if axis is None:
-            x = mod.reshape(x, -1)
+            x = mod.reshape(x, (-1,))
 
         data = xp.asarray(x.data, copy=True)
         mask = x.mask
