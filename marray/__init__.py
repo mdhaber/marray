@@ -388,8 +388,15 @@ def masked_namespace(xp):
         indices_mask = getattr(indices, 'mask', xp.broadcast_to(xp.asarray(False), shape))
         indices_data[indices_mask] = 0  # ensure valid index
         data = xp.take(x.data, indices_data, axis=axis)
-        mask = xp.take(x.mask, indices_data, axis=axis) | indices_mask
-        return MArray(data, mask=mask)
+        mask = xp.take(x.mask, indices_data, axis=axis)
+        # align `indices_mask` along `axis`
+        # at this point, standard guarantees that `x` has at least 1 dim,
+        # `axis` is `None` only if `x.ndim == 1`, and `indices` was 1d.
+        working_axis = -1 if x.ndim == 1 else axis
+        new_shape = [1,] * x.ndim
+        new_shape[working_axis] = _get_size(indices_data)
+        indices_mask = xp.reshape(indices_mask, tuple(new_shape))
+        return MArray(data, mask=mask | indices_mask)
     mod.take = take
 
     def take_along_axis(x, indices, /, *, axis=-1):
