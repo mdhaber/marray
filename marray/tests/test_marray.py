@@ -594,6 +594,25 @@ def test_take_along_axis(dtype, xp, seed=None):
 
 
 @pytest.mark.parametrize("dtype", dtypes_all)
+@pytest.mark.parametrize("xp", xps)
+@pass_exceptions(allowed=torch_exceptions)
+def test_take(dtype, xp, seed=None):
+    mxp = marray.masked_namespace(xp)
+    marrays, masked_arrays, seed = get_arrays(1, dtype=dtype, xp=xp, seed=seed)
+    ndim = marrays[0].ndim
+    shape = marrays[0].shape
+
+    rng = np.random.default_rng(seed)
+    axis = rng.integers(-ndim, ndim)
+    index_size = rng.integers(100)
+    indices = rng.integers(shape[axis], size=index_size)
+
+    res = mxp.take(marrays[0], xp.asarray(indices), axis=axis)
+    ref = np.ma.take(masked_arrays[0], indices, axis=axis)
+    assert_equal(res, ref, xp=xp, seed=seed)
+
+
+@pytest.mark.parametrize("dtype", dtypes_all)
 @pytest.mark.parametrize('xp', xps)
 @pass_exceptions(allowed=["object has no attribute 'to_device'"])  # torch/cupy
 def test_dlpack(dtype, xp, seed=None):
@@ -1451,5 +1470,5 @@ def test_gh99(xp):
 
 def test_test():
     # dev tool to reproduce a particular failure of a `parametrize`d test
-    seed = 91803015965563856304156452253329804912
-    test_nonzero("complex128", np, seed=seed)
+    seed = 98806759374046640850898260001383604577
+    test_take("bool", np, seed=seed)
