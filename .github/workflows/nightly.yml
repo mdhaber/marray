@@ -54,7 +54,7 @@ jobs:
       - name: Clone repository
         uses: actions/checkout@v5
 
-      - uses: prefix-dev/setup-pixi@v0.9.0
+      - uses: prefix-dev/setup-pixi@v0.9.1
         with:
           pixi-version: v0.52.0
           cache: true
