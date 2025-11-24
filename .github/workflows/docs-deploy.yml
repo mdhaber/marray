@@ -15,7 +15,7 @@ jobs:
       name: docs-deploy
     steps:
       - name: Checkout the repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - name: Download Artifact
         uses: dawidd6/action-download-artifact@v11
