@@ -77,6 +77,13 @@ def masked_namespace(xp):
 
         __array_priority__ = 1  # make reflected operators work with NumPy
 
+        def __array_ufunc__(self, ufunc, method, *inputs, **kwargs):
+            assert method == '__call__'
+            if ufunc.__name__ == 'matmul':
+                return MArray.__matmul__(*inputs)
+            f = getattr(ufunc, method)
+            return MArray(f(*(_get_data(x) for x in inputs), **kwargs), self.mask)
+
         @property
         def data(self):
             return self._data
@@ -526,7 +533,7 @@ def masked_namespace(xp):
     ## Set Functions ##
     def get_set_fun(name):
         def set_fun(x, /):
-            sentinel = _xinfo(x).max
+            sentinel = xp.asarray(_xinfo(x).max, dtype=x.dtype)
             any_masked = xp.any(x.mask)
             if any_masked and xp.any((x.data == sentinel) & ~x.mask):
                 message = (f"The maximum value of the data's dtype is included in the "
@@ -538,7 +545,7 @@ def masked_namespace(xp):
             data = xp.asarray(x.data, copy=True)
             # Replace masked elements with a sentinel value: they are all treated as
             # the same as one another and distinct from all non-masked values.
-            data[x.mask] = xp.asarray(sentinel, dtype=data.dtype)
+            data[x.mask] = sentinel
             fun = getattr(xp, name)
             res = fun(data)
             if name == 'unique_values':
@@ -566,7 +573,8 @@ def masked_namespace(xp):
         def sort_fun(x, /, *, axis=-1, descending=False, stable=True):
             x = asarray(x)
             data = xp.asarray(x.data, copy=True)
-            sentinel = _xinfo(x).min if descending else _xinfo(x).max
+            sentinel = xp.asarray(_xinfo(x).min if descending else _xinfo(x).max,
+                                  dtype=x.dtype)
             any_masked = xp.any(x.mask)
             if any_masked and xp.any((data == sentinel) & ~x.mask):
                 minmax = "minimum" if descending else "maximum"
