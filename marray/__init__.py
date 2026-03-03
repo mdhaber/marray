@@ -154,8 +154,13 @@ def masked_namespace(xp):
 
         def __setitem__(self, key, other):
             key = self._validate_key(key)
-            self.mask[key] = getattr(other, 'mask', False)
-            return self.data.__setitem__(key, _get_data(other))
+            if "jax" in str(self._xp):
+                data, mask = _get_data_mask(other)
+                self._mask = self._mask.at[key].set(mask)
+                self._data = self._data.at[key].set(data)
+            else:
+                self.mask[key] = getattr(other, 'mask', False)
+                self.data.__setitem__(key, _get_data(other))
 
         def __iter__(self):
             return iter(self.data)
@@ -393,7 +398,11 @@ def masked_namespace(xp):
         indices_data = _get_data(indices)
         shape = xp.asarray(indices_data).shape
         indices_mask = getattr(indices, 'mask', xp.broadcast_to(xp.asarray(False), shape))
-        indices_data[indices_mask] = 0  # ensure valid index
+        # ensure valid index
+        if "jax" in str(xp):
+            indices_data = xp.where(indices_mask, 0, indices_data)
+        else:
+            indices_data[indices_mask] = 0
         data = xp.take(x.data, indices_data, axis=axis)
         mask = xp.take(x.mask, indices_data, axis=axis)
         # align `indices_mask` along `axis`
@@ -409,7 +418,11 @@ def masked_namespace(xp):
     def take_along_axis(x, indices, /, *, axis=-1):
         indices_data = _get_data(indices)
         indices_mask = getattr(indices, 'mask', False)
-        indices_data[indices_mask] = 0  # ensure valid index
+        # ensure valid index
+        if "jax" in str(xp):
+            indices_data = xp.where(indices_mask, 0, indices_data)
+        else:
+            indices_data[indices_mask] = 0
         data = xp.take_along_axis(x.data, indices_data, axis=axis)
         mask = xp.take_along_axis(x.mask, indices_data, axis=axis) | indices_mask
         return MArray(data, mask=mask)
@@ -496,8 +509,12 @@ def masked_namespace(xp):
         mask_count = xp.cumulative_sum(xp.astype(x1.mask, xp.int64))
         x1_compressed = x1.data[~x1.mask]
         count = xp.zeros(x1_compressed.shape[0]+1, dtype=xp.int64)
-        count[:-1] = mask_count[~x1.mask]
-        count[-1] = count[-2]
+        if "jax" in str(xp):
+            count = count.at[:-1].set(mask_count[~x1.mask])
+            count = count.at[-1].set(count[-2])
+        else:
+            count[:-1] = mask_count[~x1.mask]
+            count[-1] = count[-2]
         i = xp.searchsorted(x1_compressed, x2.data, side=side)
         j = i + xp.take(count, i)
         return MArray(j, mask=x2.mask)
@@ -505,7 +522,10 @@ def masked_namespace(xp):
     def nonzero(x, /):
         x = asarray(x)
         data = xp.asarray(x.data, copy=True)
-        data[x.mask] = xp.asarray(0, dtype=data.dtype)
+        if "jax" in str(xp):
+            data = data.at[x.mask].set(xp.asarray(0, dtype=data.dtype))
+        else:
+            data[x.mask] = xp.asarray(0, dtype=data.dtype)
         res = xp.nonzero(data)
         return tuple(MArray(resi) for resi in res)
 
@@ -545,7 +565,10 @@ def masked_namespace(xp):
             data = xp.asarray(x.data, copy=True)
             # Replace masked elements with a sentinel value: they are all treated as
             # the same as one another and distinct from all non-masked values.
-            data[x.mask] = sentinel
+            if "jax" in str(xp):
+                data = xp.where(x.mask, sentinel, data)
+            else:
+                data[x.mask] = sentinel
             fun = getattr(xp, name)
             res = fun(data)
             if name == 'unique_values':
@@ -583,7 +606,10 @@ def masked_namespace(xp):
                            "are present. Consider promoting to another dtype to use "
                            f"`{name}`.")
                 raise NotImplementedError(message)
-            data[x.mask] = xp.asarray(sentinel, dtype=data.dtype)
+            if "jax" in str(xp):
+                data = xp.where(x.mask, sentinel, data)
+            else:
+                data[x.mask] = xp.asarray(sentinel, dtype=data.dtype)
             fun = getattr(xp, name)
             kwargs = {'descending': True} if descending else {}
             res = fun(data, axis=axis, stable=stable, **kwargs)
@@ -609,7 +635,10 @@ def masked_namespace(xp):
                             'any': False}
             x = asarray(x)
             data = xp.asarray(x.data, copy=True)
-            data[x.mask] = xp.asarray(replacements[name], dtype=data.dtype)
+            if "jax" in str(xp):
+                data = xp.where(x.mask, xp.asarray(replacements[name], dtype=data.dtype), data)
+            else:
+                data[x.mask] = xp.asarray(replacements[name], dtype=data.dtype)
             fun = getattr(xp, name)
             res = fun(data, *args, axis=axis, **kwargs)
             mask = xp.all(x.mask, axis=axis, keepdims=kwargs.get('keepdims', False))
@@ -628,7 +657,10 @@ def masked_namespace(xp):
 
         data = xp.asarray(x.data, copy=True)
         mask = x.mask
-        data[mask] = xp.asarray(_identity, dtype=data.dtype)
+        if "jax" in str(xp):
+            data = data.at[mask].set(xp.asarray(_identity, dtype=data.dtype))
+        else:
+            data[mask] = xp.asarray(_identity, dtype=data.dtype)
         res = _op(data, *args, **kwargs)
 
         if kwargs.get('include_initial', False):
