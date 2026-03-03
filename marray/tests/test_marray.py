@@ -1609,4 +1609,4 @@ def test_gh99(xp):
 def test_test():
     # dev tool to reproduce a particular failure of a `parametrize`d test
     seed = 56556603399057040729704206821510854060
-    test_elementwise_binary('pow',"uint16", jax.numpy, seed=seed)
+    test_elementwise_binary('pow',"uint16", strict, seed=seed)
