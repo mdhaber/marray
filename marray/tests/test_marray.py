@@ -8,7 +8,9 @@ import re
 import array_api_strict as strict
 import numpy as np
 import pytest
+
 import marray
+from marray import _is_backend as is_backend
 
 xps = [np, strict]
 xps_take_along_axis = []
@@ -33,7 +35,6 @@ try:
 except (ImportError, ModuleNotFoundError):
     pass
 
-# xps = [jax.numpy]
 
 dtypes_boolean = ['bool']
 dtypes_uint = ['uint8', 'uint16', 'uint32', 'uint64', ]
@@ -50,7 +51,7 @@ def as_numpy(x):
     try:
         return np.asarray(x)
     except:
-        return cupy.asnumpy(x.copy())
+        return cupy.asnumpy(x)
 
 
 def as_masked_array(x, mask):
@@ -482,7 +483,7 @@ def test_arithmetic_binary(f_name, f, dtype, xp, seed=None):
     ref_data = f(masked_arrays[0].data, masked_arrays[1].data)
     ref_mask = masked_arrays[0].mask | masked_arrays[1].mask
     ref = np.ma.masked_array(ref_data, mask=ref_mask)
-    strict = False if "jax" in str(xp) else True  # temporary; remove before merge
+    strict = not is_backend(xp, "jax")
     assert_allclose(res, ref, seed=seed, xp=xp, strict=strict)
 
 
@@ -531,7 +532,7 @@ def test_bitwise_binary(f_name, f, dtype, xp, seed=None):
     mxp = marray.masked_namespace(xp)
     marrays, masked_arrays, seed = get_arrays(2, dtype=dtype, xp=xp, seed=seed)
 
-    strict = False if "jax" in str(xp) else True  # temporary; remove before merge
+    strict = not is_backend(xp, "jax")
 
     res = f(marrays[0], marrays[1])
     ref = f(masked_arrays[0], masked_arrays[1])
@@ -746,9 +747,7 @@ def test_inplace(f, arg2_masked, dtype, xp, seed=None):
 
     # avoid integer to negative integer power
     def adjust_arg(x):
-        if ((f == ipow) and (dtype in dtypes_int) and ("cupy" in str(xp))):
-            return abs(x)
-        return x
+        return abs(x) if (f == ipow) and (dtype in dtypes_int) else x
 
     try:
         f(masked_arrays[0].data, adjust_arg(masked_arrays[1].data))
@@ -768,7 +767,7 @@ def test_inplace(f, arg2_masked, dtype, xp, seed=None):
         pass
     elif e1 or e2:
         assert e1 and e2
-    elif "cupy" in str(xp) and f == ipow:
+    elif is_backend(xp, "cupy") and f == ipow:
         assert_allclose(marrays[0], masked_arrays[0], xp=xp, seed=seed)
     else:
         assert_equal(marrays[0], masked_arrays[0], xp=xp, seed=seed)
@@ -1024,6 +1023,10 @@ def test_statistical_array(f_name, keepdims, xp, dtype, seed=None):
                  pass_dtypes=['int8', 'int16', 'int32'],
                  fun=f_name, pass_funs=["cumulative_prod"],
                  reason='JAX does not follow standard.')
+    pass_backend(xp=xp, pass_xp='jax.numpy', dtype=dtype,
+                 pass_dtypes=['float32'],
+                 fun=f_name, pass_funs=["cumulative_sum"],
+                 reason='Occasional tolerance issues.')
     pass_backend(xp=xp, pass_xp='torch', dtype=dtype, pass_dtypes=['float32', 'complex64'],
                  fun=f_name, pass_funs=statistical_array, pass_using=pytest.xfail,
                  reason='Occasional tolerance issues.')
@@ -1056,7 +1059,7 @@ def test_statistical_array(f_name, keepdims, xp, dtype, seed=None):
     ref_mask = np.all(masked_arrays[0].mask, axis=axis, **kwargs)
     ref = np.ma.masked_array(ref.data, getattr(ref, 'mask', ref_mask))
     ref = ref.astype(ref_dtype)
-    strict = "cupy" not in str(xp) and "jax" not in str(xp)  # temporary; remove before merge
+    strict = not is_backend(xp, "jax", "cupy")
     assert_allclose(res, ref, xp=xp, seed=seed, strict=strict)
 
 @pytest.mark.parametrize("dtype", dtypes_all)
@@ -1462,7 +1465,7 @@ def test_sorting(f_name, descending, stable, dtype, xp, seed=None):
     info = marray._xinfo(marrays[0])
     sentinel = info.min if descending else info.max
     sentinel = (xp.asarray(sentinel, dtype=marrays[0].dtype)
-                if ("cupy" in str(xp) or "jax" in str(xp)) else sentinel)
+                if is_backend(xp, "jax", "cupy") else sentinel)
     if mxp.any(marrays[0] == sentinel) and xp.any(marrays[0].mask):
         message = "value of the data's dtype is included"
         with pytest.raises(NotImplementedError, match=message):
@@ -1566,7 +1569,7 @@ def test_count(axis, keepdims, dtype, xp, seed=None):
                                               xp=xp, seed=seed)
     res = mxp.count(marrays[0], axis=axis, keepdims=keepdims)
     ref = np.ma.count(masked_arrays[0], axis=axis, keepdims=keepdims)
-    strict = "cupy" not in str(xp)  # cupy uses int32
+    strict = not is_backend(xp, "cupy")  # cupy uses int32
     assert_equal(res, np.ma.masked_array(ref), xp=xp, seed=seed, strict=strict)
 
 
@@ -1582,7 +1585,7 @@ def test_copy(xp, dtype, seed=None):
     assert_equal(res, x1, xp=xp, seed=seed)
 
     # changing the copied array doesn't affect the original array
-    if "jax" in str(xp):
+    if is_backend(xp, "jax"):
         res._data = xp.zeros_like(res.data)
         res._mask = xp.zeros_like(res.mask)
     else:
