@@ -1007,7 +1007,7 @@ def test_elementwise_binary(f_name, dtype, xp, seed=None):
     ref_data = f2(masked_arrays[0].data, masked_arrays[1].data)
     ref_mask = masked_arrays[0].mask | masked_arrays[1].mask
     ref = np.ma.masked_array(ref_data, mask=ref_mask)
-    strict = False if 'jax' in str(xp) else True  # temporary; remove before merge
+    strict = not is_backend(xp, "jax")
     assert_allclose(res, ref, xp=xp, seed=seed, strict=strict)
 
 
