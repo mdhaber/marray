@@ -10,6 +10,7 @@ import numpy as np
 import pytest
 
 import marray
+from marray import _is_backend as is_backend
 
 xps = [np, strict]
 xps_take_along_axis = []
@@ -21,11 +22,19 @@ try:
 except (ImportError, ModuleNotFoundError):
     pass
 
-# try:  # addition of CuPy support is incomplete
-#     from array_api_compat import cupy
-#     xps.append(cupy)
-# except (ImportError, ModuleNotFoundError):
-#     pass
+try:
+    from array_api_compat import cupy
+    CompileException = cupy.cuda.compiler.CompileException
+    xps.append(cupy)
+except (ImportError, ModuleNotFoundError):
+    CompileException = ValueError
+
+try:
+    import jax.numpy
+    xps.append(jax.numpy)
+except (ImportError, ModuleNotFoundError):
+    pass
+
 
 dtypes_boolean = ['bool']
 dtypes_uint = ['uint8', 'uint16', 'uint32', 'uint64', ]
@@ -43,6 +52,10 @@ def as_numpy(x):
         return np.asarray(x)
     except:
         return cupy.asnumpy(x)
+
+
+def as_masked_array(x, mask):
+    return np.ma.masked_array(as_numpy(x), as_numpy(mask))
 
 
 def pass_backend(*, xp, pass_xp, fun=None, pass_funs=None, dtype=None,
@@ -131,7 +144,7 @@ def pass_exceptions(allowed=[]):
         def inner(*args, seed=None, **kwargs):
             try:
                 return f(*args, seed=seed, **kwargs)
-            except (AttributeError, ValueError, TypeError,
+            except (AttributeError, ValueError, TypeError, CompileException,
                     NotImplementedError, RuntimeError) as e:
                 for message in allowed:
                     if re.escape(message) in re.escape(str(e)):
@@ -354,6 +367,67 @@ torch_exceptions = ["\"abs_cpu\" not implemented for 'Bool",
                     ]
 
 
+cupy_exceptions = [
+    "Wrong type ((<class 'numpy.complex64'>,)) of arguments for cupy_ceil",
+    "Wrong type ((<class 'numpy.complex64'>,)) of arguments for cupy_floor",
+    "Wrong type ((<class 'numpy.complex64'>,)) of arguments for cupy_logical_not",
+    "Wrong type ((<class 'numpy.complex64'>,)) of arguments for cupy_signbit",
+    "Wrong type ((<class 'numpy.complex64'>,)) of arguments for cupy_trunc",
+    "Wrong type ((<class 'numpy.complex128'>,)) of arguments for cupy_ceil",
+    "Wrong type ((<class 'numpy.complex128'>,)) of arguments for cupy_floor",
+    "Wrong type ((<class 'numpy.complex128'>,)) of arguments for cupy_logical_not",
+    "Wrong type ((<class 'numpy.complex128'>,)) of arguments for cupy_signbit",
+    "Wrong type ((<class 'numpy.complex128'>,)) of arguments for cupy_trunc",
+    "Wrong type ((<class 'numpy.int64'>, <class 'numpy.complex64'>)) of arguments for cupy_floor_divide",
+    "Wrong type ((<class 'numpy.int64'>, <class 'numpy.complex64'>)) of arguments for cupy_remainder",
+    "Wrong type ((<class 'numpy.int64'>, <class 'numpy.complex128'>)) of arguments for cupy_floor_divide",
+    "Wrong type ((<class 'numpy.int64'>, <class 'numpy.complex128'>)) of arguments for cupy_remainder",
+    "Wrong type ((<class 'numpy.complex64'>, <class 'numpy.complex64'>)) of arguments for cupy_floor_divide",
+    "Wrong type ((<class 'numpy.complex64'>, <class 'numpy.complex64'>)) of arguments for cupy_logaddexp",
+    "Wrong type ((<class 'numpy.complex64'>, <class 'numpy.complex64'>)) of arguments for cupy_logical_and",
+    "Wrong type ((<class 'numpy.complex64'>, <class 'numpy.complex64'>)) of arguments for cupy_logical_or",
+    "Wrong type ((<class 'numpy.complex64'>, <class 'numpy.complex64'>)) of arguments for cupy_logical_xor",
+    "Wrong type ((<class 'numpy.complex64'>, <class 'numpy.complex64'>)) of arguments for cupy_remainder",
+    "Wrong type ((<class 'numpy.complex128'>, <class 'numpy.complex128'>)) of arguments for cupy_floor_divide",
+    "Wrong type ((<class 'numpy.complex128'>, <class 'numpy.complex128'>)) of arguments for cupy_logaddexp",
+    "Wrong type ((<class 'numpy.complex128'>, <class 'numpy.complex128'>)) of arguments for cupy_logical_and",
+    "Wrong type ((<class 'numpy.complex128'>, <class 'numpy.complex128'>)) of arguments for cupy_logical_or",
+    "Wrong type ((<class 'numpy.complex128'>, <class 'numpy.complex128'>)) of arguments for cupy_logical_xor",
+    "Wrong type ((<class 'numpy.complex128'>, <class 'numpy.complex128'>)) of arguments for cupy_remainder",
+    "cupy boolean subtract, the `-` operator, is deprecated",
+    "no instance of overloaded function \"atan2\" matches the argument",
+    "no instance of overloaded function \"copysign\" matches the argument",
+    "no instance of overloaded function \"hypot\" matches the argument",
+    "no instance of overloaded function \"nextafter\" matches the argument",
+    "The cupy boolean negative, the `-` operator, is not supported",
+    "The cupy boolean positive, the `+` operator, is not supported",
+]
+
+
+jax_exceptions = [
+    "rem does not accept dtype complex64 at position 0",
+    "rem does not accept dtype complex128 at position 0",
+    "floor_divide does not support complex-valued inputs",
+    "neg does not accept dtype bool",
+    "data type <class 'numpy.bool'> not inexact",
+    "sign does not accept dtype bool",
+    "sub does not accept dtype bool",
+    "ceil does not accept dtype complex",
+    "floor does not accept dtype complex",
+    "jax.numpy.signbit is not well defined for complex",
+    "lt does not accept dtype complex",
+    "gt does not accept dtype complex",
+    "copysign does not support complex-valued inputs",
+    "jnp.hypot is not well defined for complex",
+    "nextafter does not accept dtype complex",
+    "Clip received a complex value",
+    "Casting from complex to real dtypes will soon raise a ValueError",
+]
+
+
+backend_exceptions = torch_exceptions + cupy_exceptions + jax_exceptions
+
+
 @pytest.mark.parametrize("f_name, f",
                          (arithmetic_unary | arithmetic_methods_unary).items())
 @pytest.mark.parametrize('dtype', dtypes_numeric)
@@ -383,17 +457,34 @@ arithmetic_binary_exceptions = [
                          (arithmetic_binary | arithmetic_methods_binary).items())
 @pytest.mark.parametrize('dtype', dtypes_numeric)
 @pytest.mark.parametrize('xp', xps)
-@pass_exceptions(allowed=arithmetic_binary_exceptions + torch_exceptions)
+@pass_exceptions(allowed=arithmetic_binary_exceptions + backend_exceptions)
 def test_arithmetic_binary(f_name, f, dtype, xp, seed=None):
+    pass_backend(xp=xp, dtype=dtype, fun=f_name, pass_xp='jax',
+                 pass_funs=['x // y', "x.__floordiv__(y)"],
+                 pass_dtypes=dtypes_boolean + dtypes_integral,
+                 reason="Division by zero conventions differ", pass_using=pytest.skip)
+    pass_backend(xp=xp, dtype=dtype, fun=f_name, pass_xp='jax',
+                 pass_funs=['x ** y', "x.__pow__(y)"],
+                 pass_dtypes=dtypes_uint,
+                 reason="Results disagree; not defined by standard", pass_using=pytest.skip)
     pass_backend(xp=xp, pass_xp='torch', dtype=dtype, pass_dtypes=['complex64'],
                  fun=f_name, pass_funs=["x ** y", "x.__pow__(y)"], pass_using=pytest.xfail,
                  reason='Occasional tolerance issues.')
+    pass_backend(xp=xp, pass_xp='cupy', dtype=dtype, pass_dtypes=['complex64'],
+                 fun=f_name, pass_funs=["x ** y", "x.__pow__(y)"], pass_using=pytest.xfail,
+                 reason='Occasional tolerance issues.')
+    pass_backend(xp=xp, pass_xp='jax', dtype=dtype, pass_dtypes=['complex64'],
+                 fun=f_name, pass_funs=["x ** y", "x.__pow__(y)"], pass_using=pytest.xfail,
+                 reason='Occasional tolerance issues.')
+    # some JAX tests are failing due to legit differences in how JAX vs NumPy do
+    # arithmetic with integers
     marrays, masked_arrays, seed = get_arrays(2, dtype=dtype, xp=xp, seed=seed)
     res = f(marrays[0], marrays[1])
     ref_data = f(masked_arrays[0].data, masked_arrays[1].data)
     ref_mask = masked_arrays[0].mask | masked_arrays[1].mask
     ref = np.ma.masked_array(ref_data, mask=ref_mask)
-    assert_allclose(res, ref, seed=seed, xp=xp)
+    strict = not is_backend(xp, "jax")
+    assert_allclose(res, ref, seed=seed, xp=xp, strict=strict)
 
 
 @pytest.mark.parametrize("f_name, f", (array_binary | array_methods_binary).items())
@@ -441,13 +532,15 @@ def test_bitwise_binary(f_name, f, dtype, xp, seed=None):
     mxp = marray.masked_namespace(xp)
     marrays, masked_arrays, seed = get_arrays(2, dtype=dtype, xp=xp, seed=seed)
 
+    strict = not is_backend(xp, "jax")
+
     res = f(marrays[0], marrays[1])
     ref = f(masked_arrays[0], masked_arrays[1])
-    assert_equal(res, ref, xp=xp, seed=seed)
+    assert_equal(res, ref, xp=xp, seed=seed, strict=strict)
 
     f = getattr(mxp, f_name)
     res = f(marrays[0], marrays[1])
-    assert_equal(res, ref, xp=xp, seed=seed)
+    assert_equal(res, ref, xp=xp, seed=seed, strict=strict)
 
 
 @pytest.mark.parametrize('type_val', scalar_conversions.items())
@@ -587,7 +680,7 @@ def test_take_along_axis(dtype, xp, seed=None):
     rng = np.random.default_rng(seed)
     mask = xp.asarray(rng.random(i.shape) > 0.5)
     i = i.data
-    i[mask] = 1000  # invalid index, but it will be masked
+    i = xp.where(mask, 1000, i)  # invalid index, but it will be masked
     i = mxp.asarray(i, mask=mask)
     res = mxp.take_along_axis(x, i, axis=-1)
     ref = mxp.asarray(ref.data, mask=(ref.mask | mask))
@@ -643,13 +736,21 @@ def test_comparison_binary(f_name, f, dtype, xp, seed=None):
 @pytest.mark.parametrize('xp', xps)
 @pass_exceptions(allowed=torch_exceptions)
 def test_inplace(f, arg2_masked, dtype, xp, seed=None):
+    pass_backend(xp=xp, pass_xp='jax.numpy', reason="JAX doesn't do inplace ops.")
     pass_backend(xp=xp, pass_xp='torch', dtype=dtype, pass_dtypes=dtypes_integral)
+    pass_backend(xp=xp, pass_xp='cupy', dtype=dtype, pass_dtypes=['complex64', 'complex128'],
+                 fun=f, pass_funs=[itruediv, ipow], pass_using=pytest.xfail,
+                 reason='Occasional tolerance issues.')
     marrays, masked_arrays, seed = get_arrays(2, dtype=dtype, xp=xp, seed=seed)
     e1 = None
     e2 = None
 
+    # avoid integer to negative integer power
+    def adjust_arg(x):
+        return abs(x) if (f == ipow) and (dtype in dtypes_int) else x
+
     try:
-        f(masked_arrays[0].data, masked_arrays[1].data)
+        f(masked_arrays[0].data, adjust_arg(masked_arrays[1].data))
         if arg2_masked:
             masked_arrays[0].mask |= masked_arrays[1].mask
         masked_arrays[0] = np.ma.masked_array(masked_arrays[0].data,
@@ -657,7 +758,7 @@ def test_inplace(f, arg2_masked, dtype, xp, seed=None):
     except Exception as e:
         e1 = str(e)
     try:
-        f(marrays[0], marrays[1] if arg2_masked else marrays[1].data)
+        f(marrays[0], adjust_arg(marrays[1] if arg2_masked else marrays[1].data))
     except Exception as e:
         e2 = str(e)
 
@@ -666,6 +767,8 @@ def test_inplace(f, arg2_masked, dtype, xp, seed=None):
         pass
     elif e1 or e2:
         assert e1 and e2
+    elif is_backend(xp, "cupy") and f == ipow:
+        assert_allclose(marrays[0], masked_arrays[0], xp=xp, seed=seed)
     else:
         assert_equal(marrays[0], masked_arrays[0], xp=xp, seed=seed)
 
@@ -675,6 +778,7 @@ def test_inplace(f, arg2_masked, dtype, xp, seed=None):
 @pytest.mark.parametrize('xp', xps)
 @pass_exceptions(allowed=["Only numeric dtypes are allowed in matmul"])
 def test_inplace_array_binary(f, dtype, xp, seed=None):
+    pass_backend(xp=xp, pass_xp='jax.numpy', reason="JAX doesn't do inplace ops.")
     pass_backend(xp=xp, pass_xp='torch', dtype=dtype,
                  pass_dtypes=['bool', 'uint16', 'uint32', 'uint64'])
     # very restrictive operator -> limited test
@@ -702,11 +806,10 @@ def test_inplace_array_binary(f, dtype, xp, seed=None):
                           "Integers to negative integer powers are not allowed",
                           "numpy boolean subtract, the `-` operator, is not supported",
                           "ZeroDivisionError"
-                          ] + torch_exceptions)
+                          ] + torch_exceptions + cupy_exceptions)
 def test_rarithmetic_binary(f_name, f, dtype, xp, type_, seed=None):
-    pass_backend(xp=xp, pass_xp='strict', dtype=dtype, pass_dtypes=dtypes_all,
-                 pass_using=pytest.skip,
-                 reason='Strict arrays do not support reflected operations')
+    pass_backend(xp=xp, pass_xp='jax.numpy', reason='JAX arrays do not currently support reflected operations')
+    pass_backend(xp=xp, pass_xp='strict', reason='Strict arrays do not support reflected operations')
     pass_backend(xp=xp, pass_xp='torch', dtype=dtype, pass_dtypes=['complex64'],
                  fun=f_name, pass_funs=["x ** y", "x.__pow__(y)"], pass_using=pytest.xfail,
                  reason='Occasional tolerance issues.')
@@ -730,9 +833,8 @@ def test_rarithmetic_binary(f_name, f, dtype, xp, type_, seed=None):
                          + torch_exceptions)
 def test_rarray_binary(dtype, xp, seed=None):
     # very restrictive operator -> limited test
-    pass_backend(xp=xp, pass_xp='strict', dtype=dtype, pass_dtypes=dtypes_all,
-                 pass_using=pytest.skip,
-                 reason='Strict arrays do not support reflected operations')
+    pass_backend(xp=xp, pass_xp='jax.numpy', reason='JAX arrays do not currently support reflected operations')
+    pass_backend(xp=xp, pass_xp='strict', reason='Strict arrays do not support reflected operations')
     mxp = marray.masked_namespace(xp)
     rng = np.random.default_rng(seed)
     data = (rng.random((3, 10, 10))*10).astype(dtype)
@@ -751,9 +853,8 @@ def test_rarray_binary(dtype, xp, seed=None):
 @pytest.mark.parametrize('xp', xps)
 @pass_exceptions(allowed=["Only integer dtypes are allowed in"] + torch_exceptions)
 def test_rbitwise_binary(f, dtype, xp, seed=None):
-    pass_backend(xp=xp, pass_xp='strict', dtype=dtype, pass_dtypes=dtypes_all,
-                 pass_using=pytest.skip,
-                 reason='Strict arrays do not support reflected operations')
+    pass_backend(xp=xp, pass_xp='jax.numpy', reason='JAX arrays do not currently support reflected operations')
+    pass_backend(xp=xp, pass_xp='strict', reason='Strict arrays do not support reflected operations')
     marrays, masked_arrays, seed = get_arrays(2, dtype=dtype, xp=xp, seed=seed)
     res = f(marrays[0].data, marrays[1])
     ref = f(masked_arrays[0].data, masked_arrays[1])
@@ -854,7 +955,7 @@ def test_can_cast_result_type(f_name, dtype1, dtype2, xp, seed=None):
                           "Only numeric dtypes are allowed",
                           "Only boolean dtypes are allowed",
                           "Only complex floating-point dtypes are allowed"]
-                         + torch_exceptions)
+                         + backend_exceptions)
 def test_elementwise_unary(f_name, dtype, xp, seed=None):
     mxp = marray.masked_namespace(xp)
     marrays, masked_arrays, seed = get_arrays(1, dtype=dtype, xp=xp, seed=seed)
@@ -863,7 +964,7 @@ def test_elementwise_unary(f_name, dtype, xp, seed=None):
     res = f(marrays[0])
     ref_data = f2(xp.asarray(masked_arrays[0].data))
     ref_mask = masked_arrays[0].mask
-    ref = np.ma.masked_array(ref_data, mask=ref_mask)
+    ref = as_masked_array(ref_data, mask=ref_mask)
     assert_equal(res, ref, xp=xp, seed=seed)
 
 
@@ -878,8 +979,20 @@ def test_elementwise_unary(f_name, dtype, xp, seed=None):
                           "Only real floating-point dtypes are allowed",
                           "Only numeric dtypes are allowed",
                           "Only boolean dtypes are allowed",
-                          "ZeroDivisionError"] + torch_exceptions)
+                          "ZeroDivisionError"] + backend_exceptions)
 def test_elementwise_binary(f_name, dtype, xp, seed=None):
+    pass_backend(xp=xp, dtype=dtype, fun=f_name, pass_xp='jax',
+                 pass_funs=['floor_divide'],
+                 pass_dtypes=dtypes_boolean + dtypes_integral,
+                 reason="Division by zero conventions differ", pass_using=pytest.skip)
+    pass_backend(xp=xp, dtype=dtype, fun=f_name, pass_xp='jax',
+                 pass_funs=['atan2', 'hypot', 'logaddexp', 'nextafter'],
+                 pass_dtypes=['bool', 'uint8', 'int8'],
+                 reason="Results disagree; not defined by standard", pass_using=pytest.skip)
+    pass_backend(xp=xp, dtype=dtype, fun=f_name, pass_xp='jax',
+                 pass_funs=['pow'],
+                 pass_dtypes=dtypes_uint,
+                 reason="Results disagree; not defined by standard", pass_using=pytest.skip)
     pass_backend(xp=xp, dtype=dtype, fun=f_name, pass_xp='torch',
                  pass_funs=['copysign', 'atan2'],
                  pass_dtypes=['bool', 'uint8', 'uint16', 'int8', 'int16'],
@@ -894,7 +1007,8 @@ def test_elementwise_binary(f_name, dtype, xp, seed=None):
     ref_data = f2(masked_arrays[0].data, masked_arrays[1].data)
     ref_mask = masked_arrays[0].mask | masked_arrays[1].mask
     ref = np.ma.masked_array(ref_data, mask=ref_mask)
-    assert_allclose(res, ref, xp=xp, seed=seed)
+    strict = not is_backend(xp, "jax")
+    assert_allclose(res, ref, xp=xp, seed=seed, strict=strict)
 
 
 @pytest.mark.parametrize("keepdims", [False, True])
@@ -903,8 +1017,16 @@ def test_elementwise_binary(f_name, dtype, xp, seed=None):
 @pytest.mark.parametrize('xp', xps)
 @pass_exceptions(allowed=["Only floating-point dtypes are allowed in __truediv__",
                           "Only numeric dtypes are allowed",
-                          "Only real numeric dtypes are allowed"] + torch_exceptions)
+                          "Only real numeric dtypes are allowed"] + backend_exceptions)
 def test_statistical_array(f_name, keepdims, xp, dtype, seed=None):
+    pass_backend(xp=xp, pass_xp='jax.numpy', dtype=dtype,
+                 pass_dtypes=['int8', 'int16', 'int32'],
+                 fun=f_name, pass_funs=["cumulative_prod"],
+                 reason='JAX does not follow standard.')
+    pass_backend(xp=xp, pass_xp='jax.numpy', dtype=dtype,
+                 pass_dtypes=['float32'],
+                 fun=f_name, pass_funs=["cumulative_sum"],
+                 reason='Occasional tolerance issues.')
     pass_backend(xp=xp, pass_xp='torch', dtype=dtype, pass_dtypes=['float32', 'complex64'],
                  fun=f_name, pass_funs=statistical_array, pass_using=pytest.xfail,
                  reason='Occasional tolerance issues.')
@@ -937,7 +1059,8 @@ def test_statistical_array(f_name, keepdims, xp, dtype, seed=None):
     ref_mask = np.all(masked_arrays[0].mask, axis=axis, **kwargs)
     ref = np.ma.masked_array(ref.data, getattr(ref, 'mask', ref_mask))
     ref = ref.astype(ref_dtype)
-    assert_allclose(res, ref, xp=xp, seed=seed, strict=True)
+    strict = not is_backend(xp, "jax", "cupy")
+    assert_allclose(res, ref, xp=xp, seed=seed, strict=strict)
 
 @pytest.mark.parametrize("dtype", dtypes_all)
 @pytest.mark.parametrize('xp', xps)
@@ -1015,8 +1138,8 @@ def test_creation(f_name, args, kwargs, dtype, xp, seed=None):
     if f_name.startswith('empty'):
         assert res.data.shape == ref.shape
     else:
-        np.testing.assert_equal(res.data, np.asarray(ref), strict=True)
-    np.testing.assert_equal(res.mask, np.full(ref.shape, False), strict=True)
+        np.testing.assert_equal(as_numpy(res.data), as_numpy(ref), strict=True)
+    np.testing.assert_equal(as_numpy(res.mask), np.full(ref.shape, False), strict=True)
 
 
 @pytest.mark.parametrize('f_name',
@@ -1034,7 +1157,7 @@ def test_creation_like(f_name, dtype, xp, seed=None):
     ref = f_np(masked_arrays[0], *args, dtype=dtype)
     if f_name.startswith('empty'):
         assert res.data.shape == ref.shape
-        np.testing.assert_equal(res.mask, ref.mask)
+        np.testing.assert_equal(as_numpy(res.mask), ref.mask)
     else:
         ref = np.ma.masked_array(ref, mask=masked_arrays[0].mask)
         assert_equal(res, ref, xp=xp, seed=seed)
@@ -1053,7 +1176,7 @@ def test_tri(f_name, dtype, xp, seed=None):
     res = f_mxp(marrays[0], k=1)
     ref_data = f_xp(marrays[0].data, k=1)
     ref_mask = f_xp(marrays[0].mask, k=1)
-    ref = np.ma.masked_array(ref_data, mask=ref_mask)
+    ref = as_masked_array(ref_data, mask=ref_mask)
     assert_equal(res, ref, xp=xp, seed=seed)
 
 
@@ -1117,12 +1240,13 @@ def test_searchsorted(side, dtype, xp, seed=None):
             assert x2.mask[j]
             continue
 
-        i = i.__index__()
+        i = i.data
         v = x2[j]
         if side == 'left':
             assert mxp.all(x1[:i] < v) and mxp.all(v <= x1[i:])
         else:
             assert mxp.all(x1[:i] <= v) and mxp.all(v < x1[i:])
+
 
 @pytest.mark.parametrize('dtype', dtypes_all)
 @pytest.mark.parametrize('xp', xps)
@@ -1209,34 +1333,41 @@ def test_manipulation(f_name, n_arrays, n_dims, args, kwargs, dtype, xp, seed=No
         ref_data = f_xp(*[marray.data for marray in marrays], *args, **kwargs)
         ref_mask = f_xp(*[marray.mask for marray in marrays], *args, **kwargs)
 
-    ref = np.ma.masked_array(ref_data, mask=ref_mask)
-
     if f_name in {'broadcast_arrays', 'unstack'}:
-        [assert_equal(res_i, ref_i, xp=xp, seed=seed) for res_i, ref_i in zip(res, ref)]
+        [assert_equal(res_i, as_masked_array(ref_data_i, mask=ref_mask_i), xp=xp, seed=seed)
+         for res_i, ref_data_i, ref_mask_i in zip(res, ref_data, ref_mask)]
     else:
+        ref = as_masked_array(ref_data, mask=ref_mask)
         assert_equal(res, ref, xp=xp, seed=seed)
 
 
 @pytest.mark.filterwarnings('ignore::numpy.exceptions.ComplexWarning')
 @pytest.mark.filterwarnings('ignore:Casting complex values to real:UserWarning')
+@pytest.mark.filterwarnings('ignore:Casting from complex to real:DeprecationWarning')
 @pytest.mark.parametrize('dtype_in', dtypes_all)
 @pytest.mark.parametrize('dtype_out', dtypes_all)
 @pytest.mark.parametrize('copy', [False, True])
 @pytest.mark.parametrize('xp', xps)
-@pass_exceptions(allowed=["The Array API standard stipulates that casting"] + torch_exceptions)
+@pass_exceptions(allowed=["The Array API standard stipulates that casting"] + backend_exceptions)
 def test_astype(dtype_in, dtype_out, copy, xp, seed=None):
     mxp = marray.masked_namespace(xp)
     marrays, masked_arrays, seed = get_arrays(1, dtype=dtype_in, xp=xp, seed=seed)
 
-    res = mxp.astype(marrays[0], getattr(xp, dtype_out), copy=copy)
+    # negative values don't convert to uints the same way in CuPy
+    if (dtype_in != "bool") and (dtype_out in dtypes_uint):
+        x, y = abs(marrays[0]), abs(masked_arrays[0])
+    else:
+        x, y = marrays[0], masked_arrays[0]
+
+    res = mxp.astype(x, getattr(xp, dtype_out), copy=copy)
     if dtype_in == dtype_out:
         if copy:
-            assert res.data is not marrays[0].data
-            assert res.mask is not marrays[0].mask
+            assert res.data is not x.data
+            assert res.mask is not x.mask
         else:
-            assert res.data is marrays[0].data
-            assert res.mask is marrays[0].mask
-    ref = masked_arrays[0].astype(dtype_out, copy=copy)
+            assert res.data is x.data
+            assert res.mask is x.mask
+    ref = y.astype(dtype_out, copy=copy)
     assert_equal(res, ref, xp=xp, seed=seed)
 
 
@@ -1249,15 +1380,15 @@ def test_asarray_device(xp=np):
 
 @pytest.mark.parametrize('dtype', dtypes_all)
 @pytest.mark.parametrize('xp', xps)
-@pass_exceptions(allowed=["Only real numeric dtypes are allowed"] + torch_exceptions)
+@pass_exceptions(allowed=["Only real numeric dtypes are allowed"] + backend_exceptions)
 def test_clip(dtype, xp, seed=None):
     mxp = marray.masked_namespace(xp)
     marrays, masked_arrays, seed = get_arrays(3, dtype=dtype, xp=xp, seed=seed)
     min = mxp.minimum(marrays[1], marrays[2])
     max = mxp.maximum(marrays[1], marrays[2])
     res = mxp.clip(marrays[0], min=min, max=max)
-    min = np.ma.masked_array(min.data, mask=min.mask)
-    max = np.ma.masked_array(max.data, mask=max.mask)
+    min = as_masked_array(min.data, mask=min.mask)
+    max = as_masked_array(max.data, mask=max.mask)
     ref = np.ma.clip(masked_arrays[0], min, max)
     assert_equal(res, ref, xp=xp, seed=seed)
 
@@ -1280,7 +1411,7 @@ def test_set(f_name, dtype, xp, seed=None):
     mask = x.mask
     sentinel = marray._xinfo(x).max
 
-    if mxp.any(x == sentinel):
+    if mxp.any(x == xp.asarray(sentinel, dtype=getattr(xp, dtype))):
         message = "The maximum value of the data's dtype is included"
         with pytest.raises(NotImplementedError, match=message):
             f_mxp(x)
@@ -1288,8 +1419,8 @@ def test_set(f_name, dtype, xp, seed=None):
 
     res = f_mxp(x)
 
-    data[mask] = sentinel
-    ref = np.unique_all(np.asarray(data))
+    data = xp.where(mask, xp.asarray(sentinel, dtype=data.dtype), data)
+    ref = np.unique_all(as_numpy(data))
     ref_mask = np.asarray(ref.values == sentinel)
 
     ref_values = np.ma.masked_array(np.asarray(ref.values), mask=ref_mask)
@@ -1297,23 +1428,24 @@ def test_set(f_name, dtype, xp, seed=None):
     if f_name == "unique_values":
         # NumPy will no longer sort the result, so do that for comparison
         mnp = marray.masked_namespace(np)
-        res_values = mnp.asarray(res_values)
+        res_values = mnp.asarray(as_numpy(res_values.data),
+                                 mask=as_numpy(res_values.mask))
         res_values = mnp.sort(res_values)
         assert_equal(res_values, ref_values, xp=np, seed=seed)
     else:
         assert_equal(res_values, ref_values, xp=xp, seed=seed)
 
     if hasattr(res, 'counts'):
-        ref_counts = np.ma.masked_array(np.asarray(ref.counts), mask=False)
+        ref_counts = as_masked_array(ref.counts, mask=False)
         assert_equal(res.counts, ref_counts, xp=xp, seed=seed)
 
     if hasattr(res, 'indices'):
-        ref_indices = np.ma.masked_array(np.asarray(ref.indices), mask=False)
+        ref_indices = as_masked_array(ref.indices, mask=False)
         assert_equal(res.indices, ref_indices, xp=xp, seed=seed)
         assert_equal(mxp.reshape(x, (-1,))[res.indices], res.values, xp=xp, seed=seed)
 
     if hasattr(res, 'inverse_indices'):
-        ref_inverse = np.ma.masked_array(np.asarray(ref.inverse_indices), mask=False)
+        ref_inverse = as_masked_array(ref.inverse_indices, mask=False)
         assert_equal(res.inverse_indices, ref_inverse, xp=xp, seed=seed)
         assert_equal(res.values[res.inverse_indices], x, xp=xp, seed=seed)
 
@@ -1332,6 +1464,8 @@ def test_sorting(f_name, descending, stable, dtype, xp, seed=None):
 
     info = marray._xinfo(marrays[0])
     sentinel = info.min if descending else info.max
+    sentinel = (xp.asarray(sentinel, dtype=marrays[0].dtype)
+                if is_backend(xp, "jax", "cupy") else sentinel)
     if mxp.any(marrays[0] == sentinel) and xp.any(marrays[0].mask):
         message = "value of the data's dtype is included"
         with pytest.raises(NotImplementedError, match=message):
@@ -1362,9 +1496,9 @@ def test_sorting(f_name, descending, stable, dtype, xp, seed=None):
         # doesn't sort the masked elements the same way. Instead, we use the
         # indices to sort the arrays, then compare the sorted masked arrays.
         # (The difference is that we don't compare the masked values.)
-        i_sorted = np.asarray(res.data)
-        res_data = np.take_along_axis(np.asarray(marrays[0].data), i_sorted, axis=-1)
-        res_mask = np.take_along_axis(np.asarray(marrays[0].mask), i_sorted, axis=-1)
+        i_sorted = as_numpy(res.data)
+        res_data = np.take_along_axis(as_numpy(marrays[0].data), i_sorted, axis=-1)
+        res_mask = np.take_along_axis(as_numpy(marrays[0].mask), i_sorted, axis=-1)
         res = mxp.asarray(res_data, mask=res_mask)
         ref_data = np.take_along_axis(masked_arrays[0].data, ref, axis=-1)
         ref_mask = np.take_along_axis(masked_arrays[0].mask, ref, axis=-1)
@@ -1435,7 +1569,9 @@ def test_count(axis, keepdims, dtype, xp, seed=None):
                                               xp=xp, seed=seed)
     res = mxp.count(marrays[0], axis=axis, keepdims=keepdims)
     ref = np.ma.count(masked_arrays[0], axis=axis, keepdims=keepdims)
-    assert_equal(res, np.ma.masked_array(ref), xp=xp, seed=seed)
+    strict = not is_backend(xp, "cupy")  # cupy uses int32
+    assert_equal(res, np.ma.masked_array(ref), xp=xp, seed=seed, strict=strict)
+
 
 @pass_exceptions(allowed=torch_exceptions)
 @pytest.mark.parametrize('xp', xps)
@@ -1448,9 +1584,13 @@ def test_copy(xp, dtype, seed=None):
     res = copy.deepcopy(x1)
     assert_equal(res, x1, xp=xp, seed=seed)
 
-    # changing the copied array doesn't affect the original arrray
-    res.data[:] = 0
-    res.mask[:] = False
+    # changing the copied array doesn't affect the original array
+    if is_backend(xp, "jax"):
+        res._data = xp.zeros_like(res.data)
+        res._mask = xp.zeros_like(res.mask)
+    else:
+        res.data[:] = 0
+        res.mask[:] = False
     assert_equal(x1, x2, xp=xp, seed=seed)
 
 
@@ -1471,5 +1611,5 @@ def test_gh99(xp):
 
 def test_test():
     # dev tool to reproduce a particular failure of a `parametrize`d test
-    seed = 98806759374046640850898260001383604577
-    test_take("bool", np, seed=seed)
+    seed = 56556603399057040729704206821510854060
+    test_elementwise_binary('pow',"uint16", strict, seed=seed)
