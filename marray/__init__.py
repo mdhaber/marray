@@ -352,9 +352,9 @@ def masked_namespace(xp):
         setattr(mod, name, getattr(xp, name))
 
     def astype(x, dtype, /, *, copy=True, device=None):
+        x = asarray(x)
         if device is None and not copy and dtype == x.dtype:
             return x
-        x = asarray(x)
         data = xp.astype(x.data, dtype, copy=copy, device=device)
         mask = xp.astype(x.mask, xp.bool, copy=copy, device=device)
         return MArray(data, mask=mask)
