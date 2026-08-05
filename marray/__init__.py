@@ -491,6 +491,7 @@ def masked_namespace(xp):
         setattr(mod, name, get_manip_fun(name))
     mod.broadcast_arrays = lambda *arrays: get_manip_fun('broadcast_arrays')(arrays)
     mod.meshgrid = lambda *arrays, **kwargs: get_manip_fun('meshgrid')(arrays, **kwargs)
+    mod.broadcast_shapes = xp.broadcast_shapes
 
     ## Searching Functions
     def searchsorted(x1, x2, /, *, side='left', sorter=None):
@@ -504,7 +505,7 @@ def masked_namespace(xp):
         count = _replace_where(count, slice(0, -1), mask_count[~x1.mask], xp=xp)
         count = _replace_where(count, -1, count[-2], xp=xp)
         i = xp.searchsorted(x1_compressed, x2.data, side=side)
-        j = i + xp.take(count, i)
+        j = i + count[i]
         return MArray(j, mask=x2.mask)
 
     def nonzero(x, /):
