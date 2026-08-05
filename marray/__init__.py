@@ -235,8 +235,7 @@ def masked_namespace(xp):
     ## Methods ##
 
     # Methods that return the result of a unary operation as an array
-    unary_names = (['__abs__', '__floordiv__', '__invert__', '__neg__', '__pos__']
-                   + ['__ceil__'])
+    unary_names = ['__abs__', '__invert__', '__neg__', '__pos__']
     for name in unary_names:
         def fun(self, name=name):
             data = self._call_super_method(name)
@@ -251,12 +250,12 @@ def masked_namespace(xp):
         setattr(MArray, name, fun)
 
     # Methods that return the result of an elementwise binary operation
-    binary_names = ['__add__', '__sub__', '__and__', '__eq__', '__ge__', '__gt__',
+    binary_names = ['__add__', '__and__', '__eq__', '__floordiv__', '__ge__', '__gt__',
                     '__le__', '__lshift__', '__lt__', '__mod__', '__mul__', '__ne__',
                     '__or__', '__pow__', '__rshift__', '__sub__', '__truediv__',
-                    '__xor__'] + ['__divmod__', '__floordiv__']
+                    '__xor__']
     # Methods that return the result of an elementwise binary operation (reflected)
-    rbinary_names = ['__radd__', '__rand__', '__rdivmod__', '__rfloordiv__',
+    rbinary_names = ['__radd__', '__rand__', '__rfloordiv__',
                      '__rlshift__', '__rmod__', '__rmul__', '__ror__', '__rpow__',
                      '__rrshift__', '__rsub__', '__rtruediv__', '__rxor__']
     for name in binary_names + rbinary_names:
