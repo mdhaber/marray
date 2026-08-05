@@ -1115,7 +1115,7 @@ def test_diff(n, prepend, append, dtype, xp, seed=None):
     ('empty_like', (np.empty((4, 3, 2)),), dict()),
     ('eye', (10, 11), dict(k=2)),
     ('full', ((4, 3, 2), 5), dict()),
-    ('full_like', (np.empty((4, 3, 2)), 5.), dict()),
+    ('full_like', (np.empty((4, 3, 2)),), dict(fill_value=5)),
     ('linspace', (1, 20, 100), dict(endpoint=False)),
     ('ones', ((4, 3, 2),), dict()),
     ('ones_like', (np.empty((4, 3, 2)),), dict()),

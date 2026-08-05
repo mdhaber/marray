@@ -95,7 +95,7 @@ numpy = "*"
 pytest = "*"
 pytest-cov = "*"
 pytest-xdist = "*"
-array-api-strict = "*"
+array-api-strict = ">=2.6"
 array-api-compat = "*"
 pytorch = "*"
 
@@ -110,7 +110,7 @@ pytest = "*"
 pytest-json-report = "*"
 hypothesis = "*"
 ndindex = "*"
-array-api-strict = "*"
+array-api-strict = ">=2.6"
 array-api-compat = "*"
 pytorch = "*"
 
@@ -189,7 +189,7 @@ pytest = "*"
 pytest-reportlog = "*"
 
 [tool.pixi.feature.test-upstream-dev.pypi-dependencies]
-array-api-strict = "*"
+array-api-strict = ">=2.6"
 numpy = { version = "*", index = "https://pypi.anaconda.org/scientific-python-nightly-wheels/simple" }
 
 [tool.pixi.feature.test-upstream-dev.tasks]
