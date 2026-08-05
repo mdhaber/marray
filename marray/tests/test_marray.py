@@ -1609,6 +1609,19 @@ def test_gh99(xp):
     assert mxp.any(mxp.asarray(1)) == True
 
 
+@pass_exceptions(allowed=torch_exceptions)
+@pytest.mark.parametrize('xp', xps)
+@pytest.mark.parametrize('data', [1, [1]])
+@pytest.mark.parametrize('dtype', dtypes_all)
+def test_gh161(xp, data, dtype, seed=None):
+    # https://github.com/mdhaber/marray/issues/161
+    mxp = marray.masked_namespace(xp)
+    x = xp.asarray(data, dtype=getattr(xp, dtype))
+    res = mxp.astype(x, getattr(mxp, dtype), copy=False)
+    ref = mxp.asarray(x, copy=False)
+    assert_equal(res, ref, seed=seed, xp=xp, strict=strict)
+
+
 def test_test():
     # dev tool to reproduce a particular failure of a `parametrize`d test
     seed = 56556603399057040729704206821510854060
