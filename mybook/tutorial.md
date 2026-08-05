@@ -74,6 +74,7 @@ x
 Let's see how the mask changes the behavior of common functions.
 
 ## Statistical Functions
+
 For reducing functions, masked elements are ignored; the result is the same as if the masked elements were not in the array.
 
 ```{code-cell} ipython3
@@ -90,9 +91,10 @@ For the only non-reducing statistical function, `cumulative_sum`, masked element
 mxp.cumulative_sum(x)
 ```
 
-Note that the elements at indices where the original array were masked remain masked. Because of the limitations of the underlying array library, there will always be values corresponding with masked elements in `data`, *but these values should be considered meaningless*.
+Note that the elements at indices where the original array were masked remain masked. Because of the limitations of the underlying array library, there will always be values corresponding with masked elements in `data`, _but these values should be considered meaningless_.
 
 ## Utility functions
+
 `all` and `any` work like the reducing statistics functions.
 
 ```{code-cell} ipython3
@@ -106,7 +108,7 @@ mxp.any(x)
 
 Is that last result surprising? Although there is one `True` in `x.data`, it is ignored when computing `any` because it is masked.
 
-You may have noticed that the mask of the result has always been `False` in these examples of reducing functions. This is always the case unless *all* elements of the array are masked. In this case, it is required by the reducing nature of the function to return a 0D array for a 1D input, but there is not an universally accepted result for these functions when all elements are masked. (What is the maximum of an empty set?)
+You may have noticed that the mask of the result has always been `False` in these examples of reducing functions. This is always the case unless _all_ elements of the array are masked. In this case, it is required by the reducing nature of the function to return a 0D array for a 1D input, but there is not an universally accepted result for these functions when all elements are masked. (What is the maximum of an empty set?)
 
 ```{code-cell} ipython3
 x = mxp.asarray(x.data, mask=True)
@@ -114,6 +116,7 @@ mxp.any(x).mask
 ```
 
 ## Sorting functions
+
 The sorting functions treat masked values as undefined and, by convention, append them to the end of the returned array.
 
 ```{code-cell} ipython3
@@ -123,7 +126,7 @@ x = mxp.asarray(data, mask=mask)
 mxp.sort(x)
 ```
 
-Where did those huge numbers come from? We emphasize again: *the `data` corresponding with masked elements should be considered meaningless*; they are just placeholders that allow us respect the mask while doing array operations efficiently.
+Where did those huge numbers come from? We emphasize again: _the `data` corresponding with masked elements should be considered meaningless_; they are just placeholders that allow us respect the mask while doing array operations efficiently.
 
 ```{code-cell} ipython3
 i = mxp.argsort(x)
@@ -137,7 +140,7 @@ y = x[i.data]
 y
 ```
 
-*Gotcha:* Sorting is not supported when the the non-masked data includes the maximum (minimum when `descending=True`) value of the data's `dtype`.
+_Gotcha:_ Sorting is not supported when the the non-masked data includes the maximum (minimum when `descending=True`) value of the data's `dtype`.
 
 ```{code-cell} ipython3
 z = mxp.asarray(x, mask=mask, dtype=mxp.uint8)
@@ -157,6 +160,7 @@ z_sorted
 ```
 
 ## Set functions
+
 Masked elements are treated as distinct from all non-masked elements but equivalent to all other masked elements.
 
 ```{code-cell} ipython3
@@ -171,11 +175,12 @@ res.values
 res.counts
 ```
 
-*Gotcha*: set functions have the same limitation as the sorting functions: the non-masked data may not include the maximum value of the data's `dtype`.
+_Gotcha_: set functions have the same limitation as the sorting functions: the non-masked data may not include the maximum value of the data's `dtype`.
 
 +++
 
 ## Manipulation functions
+
 Manipulation functions perform the same operation on the data and the mask.
 
 ```{code-cell} ipython3
@@ -187,6 +192,7 @@ mxp.stack([y, y])
 ```
 
 ## Creation functions
+
 Most creation functions create arrays with an all-False mask.
 
 ```{code-cell} ipython3
@@ -217,6 +223,7 @@ mxp.tril(A)
 ```
 
 ## Searching functions
+
 Similarly to the statistics functions, masked elements are treated as if they did not exist.
 
 ```{code-cell} ipython3
@@ -241,6 +248,7 @@ x[indices]  # nonzero, not masked
 ```
 
 ## Elementwise functions
+
 Elementwise functions (and operators) simply perform the requested operation on the `data`.
 
 For unary functions, the mask of the result is the mask of the argument.
@@ -259,7 +267,7 @@ x
 mxp.round(mxp.sin(x))
 ```
 
-For binary functions and operators, the mask of the result is the result of the logical *or* operation on the masks of the arguments.
+For binary functions and operators, the mask of the result is the result of the logical _or_ operation on the masks of the arguments.
 
 ```{code-cell} ipython3
 x = mxp.asarray([1, 2, 3, 4], mask=[1, 0, 1, 0])
@@ -282,7 +290,7 @@ with numpy.errstate(divide='ignore', invalid='ignore'):
 y
 ```
 
-`MArray` *does not* follow this convention.
+`MArray` _does not_ follow this convention.
 
 ```{code-cell} ipython3
 x = mxp.asarray(0, mask=False)
@@ -291,7 +299,7 @@ with numpy.errstate(divide='ignore', invalid='ignore'):
 y
 ```
 
-This is because masked elements are often used to represent *missing* data, and the results of these operations are not missing. If this does not suit your needs, mask out data according to your requirements after performing the operation.
+This is because masked elements are often used to represent _missing_ data, and the results of these operations are not missing. If this does not suit your needs, mask out data according to your requirements after performing the operation.
 
 ```{code-cell} ipython3
 x = mxp.asarray(0, mask=False)
@@ -301,6 +309,7 @@ mxp.asarray(y.data, mask=xp.isnan(y.data))
 ```
 
 ## Linear Algebra Functions
+
 As usual, linear algebra functions and operators treat masked elements as though they don't exist.
 
 ```{code-cell} ipython3
@@ -321,4 +330,5 @@ mxp.matrix_transpose(x)
 ```
 
 ## Conclusion
+
 While this tutorial is not exhaustive, we hope it is sufficient to allow you to predict the results of operations with `MArray`s and use them to suit your needs. If you'd like to see this tutorial extended in a particular way, please [open an issue](https://github.com/mdhaber/marray/issues)!

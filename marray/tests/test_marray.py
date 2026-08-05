@@ -1609,6 +1609,14 @@ def test_gh99(xp):
     assert mxp.any(mxp.asarray(1)) == True
 
 
+@pytest.mark.parametrize('xp', xps)
+def test_gh164(xp):
+    # https://github.com/mdhaber/marray/issues/164
+    mxp = marray.masked_namespace(xp)
+    assert not mxp.any(xp.asarray([False, False, False]))
+    assert mxp.any(xp.asarray([False, True, False]))
+
+
 def test_test():
     # dev tool to reproduce a particular failure of a `parametrize`d test
     seed = 56556603399057040729704206821510854060

@@ -8,13 +8,12 @@ import collections
 import dataclasses
 import importlib
 import inspect
+import math
 import sys
 import textwrap
 import types
-import math
 
-from ._mask_text import _mask_repr, _mask_str
-
+from marray._mask_text import _mask_repr, _mask_str
 
 __all__ = ["masked_namespace"]
 
@@ -601,6 +600,7 @@ def masked_namespace(xp):
     ## Statistical Functions and Utility Functions ##
     def get_statistical_fun(name):
         def statistical_fun(x, *args, axis=None, name=name, **kwargs):
+            x = asarray(x)
             replacements = {'max': _xinfo(x).min,
                             'min': _xinfo(x).max,
                             'sum': 0,
@@ -610,7 +610,6 @@ def masked_namespace(xp):
                             'argmin': _xinfo(x).max,
                             'all': True,
                             'any': False}
-            x = asarray(x)
             data = xp.where(x.mask, xp.asarray(replacements[name], dtype=x.data.dtype), x.data)
             fun = getattr(xp, name)
             res = fun(data, *args, axis=axis, **kwargs)
