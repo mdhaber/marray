@@ -504,9 +504,9 @@ def masked_namespace(xp):
         count = xp.zeros(x1_compressed.shape[0]+1, dtype=xp.int64)
         count = _replace_where(count, slice(0, -1), mask_count[~x1.mask], xp=xp)
         count = _replace_where(count, -1, count[-2], xp=xp)
-        i = xp.searchsorted(x1_compressed, x2.data, side=side)
+        i = xp.searchsorted(x1_compressed, _get_data(x2), side=side)
         j = i + count[i]
-        return MArray(j, mask=x2.mask)
+        return MArray(j, mask=_get_mask(x2))
 
     def nonzero(x, /):
         x = asarray(x)
