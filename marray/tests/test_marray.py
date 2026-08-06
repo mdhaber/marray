@@ -1459,6 +1459,19 @@ def test_set(f_name, dtype, xp, seed=None):
         assert_equal(res.values[res.inverse_indices], x, xp=xp, seed=seed)
 
 
+@pytest.mark.parametrize('dtype', dtypes_integral)
+@pytest.mark.parametrize('xp', xps)
+@pass_exceptions(backend_exceptions)
+def test_isin(dtype, xp, seed=None):
+    mxp = marray.masked_namespace(xp)
+    marrays, masked_arrays, seed = get_arrays(2, dtype=dtype, xp=xp, seed=seed)
+    res = mxp.isin(marrays[0], marrays[1])
+    # np.ma.isin is incorrect; See numpy/numpy#19877
+    ref_data = np.isin(masked_arrays[0], masked_arrays[1].compressed())
+    ref = np.ma.MaskedArray(ref_data, masked_arrays[0].mask)
+    assert_equal(res, ref, xp=xp, seed=seed)
+
+
 @pytest.mark.parametrize("f_name", ['sort', 'argsort'])
 @pytest.mark.parametrize("descending", [False, True])
 @pytest.mark.parametrize("stable", [False, True])

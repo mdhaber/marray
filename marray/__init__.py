@@ -572,6 +572,15 @@ def masked_namespace(xp):
     for name in unique_names:
         setattr(mod, name, get_set_fun(name))
 
+    def isin(x1, x2, /, *, invert=False):
+        x1 = asarray(x1)
+        x2 = mod.reshape(x2, (-1,))
+        x2 = x2[~_get_mask(x2)]
+        data = xp.isin(x1.data, x2.data)
+        res = MArray(data, x1.mask)
+        return ~res if invert else res
+    mod.isin = isin
+
     ## Sorting Functions ##
     def get_sort_fun(name):
         def sort_fun(x, /, *, axis=-1, descending=False, stable=True):
