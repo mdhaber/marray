@@ -45,12 +45,12 @@ array_api_tests/test_operators_and_elementwise_functions.py::test_sqrt
 
 # These seem to be present in array-api-strict, but they are only encountered
 # in macOS and Windows, which doesn't seem to be tested by array-api-strict CI
-array_api_tests/test_special_cases.py::test_unary[atanh(real(x_i) is +0 and imag(x_i) is NaN) -> +0 + NaN j] - AssertionError: out=(nan+nanj), but should be +0 + NaN j [atanh()]
-array_api_tests/test_special_cases.py::test_unary[atanh(real(x_i) is 1 and imag(x_i) is +0) -> +infinity + 0j] - AssertionError: out=(inf+0.7853981633974483j), but should be +infinity + 0j [atanh()]
-array_api_tests/test_special_cases.py::test_unary[atanh(real(x_i) is +infinity and imag(x_i) is NaN) -> +0 + NaN j] - AssertionError: out=(nan+1.5707963267948966j), but should be +0 + NaN j [atanh()]
-array_api_tests/test_special_cases.py::test_unary[atanh(real(x_i) is NaN and imag(x_i) is +infinity) -> \xb10 + \u03c0j/2] - AssertionError: out=(nan+1.5707963267948966j), but should be ±0 + πj/2 [atanh()]
-array_api_tests/test_special_cases.py::test_unary[tanh(real(x_i) is +0 and imag(x_i) is +infinity) -> +0 + NaN j] - AssertionError: out=(nan+nanj), but should be +0 + NaN j [tanh()]
-array_api_tests/test_special_cases.py::test_unary[tanh(real(x_i) is +0 and imag(x_i) is NaN) -> +0 + NaN j] - AssertionError: out=(nan+nanj), but should be +0 + NaN j [tanh()]
+array_api_tests/test_special_cases.py::test_unary[atanh(real(x_i) is +0 and imag(x_i) is NaN) -> +0 + NaN j]
+array_api_tests/test_special_cases.py::test_unary[atanh(real(x_i) is 1 and imag(x_i) is +0) -> +infinity + 0j]
+array_api_tests/test_special_cases.py::test_unary[atanh(real(x_i) is +infinity and imag(x_i) is NaN) -> +0 + NaN j]
+array_api_tests/test_special_cases.py::test_unary[atanh(real(x_i) is NaN and imag(x_i) is +infinity) -> \xb10 + \u03c0j/2]
+array_api_tests/test_special_cases.py::test_unary[tanh(real(x_i) is +0 and imag(x_i) is +infinity) -> +0 + NaN j]
+array_api_tests/test_special_cases.py::test_unary[tanh(real(x_i) is +0 and imag(x_i) is NaN) -> +0 + NaN j]
 
 #####
 # Remaining failures are copy-pasted from
