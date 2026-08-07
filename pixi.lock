@@ -1652,10 +1652,10 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/54/20/4d324d65cc6d9205fabedc306948156824eb9f0ee1633355a8f7ec5c66bf/pluggy-1.6.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/aa/23/3da089aa177ceaf0d3f96754ebc1318597822e6387560914cc480086e730/coverage-7.10.4-cp313-cp313-manylinux1_x86_64.manylinux_2_28_x86_64.manylinux_2_5_x86_64.whl
       - pypi: https://files.pythonhosted.org/packages/bc/16/4ea354101abb1287856baa4af2732be351c7bee728065aed451b678153fd/pytest_cov-6.2.1-py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/ca/23/0b70060007470e1c3c3f74a2e362e11efdaa68d8d657793014e6a860638b/array_api_strict-2.6.1-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/cb/b1/3846dd7f199d53cb17f49cba7e651e9ce294d8497c8c150530ed11865bb8/iniconfig-2.3.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/df/b2/87e62e8c3e2f4b32e5fe99e0b86d576da1312593b39f47d8ceef365e95ed/packaging-26.2-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/e0/b1/0542e0cab6f49f151a2d7a42400f84f706fc0b64e85dc1f56708b2e9fd37/array_api_compat-1.12.0-py3-none-any.whl
-      - pypi: https://files.pythonhosted.org/packages/e1/7b/81bef4348db9705d829c58b9e563c78eddca24438f1ce1108d709e6eed55/array_api_strict-2.4.1-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/ee/67/f403d4ae6e9cd74b546ee88cccdb29b8415a9c1b3d80aebeb20c9ea91d96/pytorch-1.0.2.tar.gz
       - pypi: https://files.pythonhosted.org/packages/f4/7e/a72dd26f3b0f4f2bf1dd8923c85f7ceb43172af56d63c7383eb62b332364/pygments-2.20.0-py3-none-any.whl
       osx-arm64:
@@ -1681,10 +1681,10 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/54/20/4d324d65cc6d9205fabedc306948156824eb9f0ee1633355a8f7ec5c66bf/pluggy-1.6.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/bc/16/4ea354101abb1287856baa4af2732be351c7bee728065aed451b678153fd/pytest_cov-6.2.1-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/c5/e8/e2dcffea01921bfffc6170fb4406cffb763a3b43a047bbd7923566708193/coverage-7.10.4-cp313-cp313-macosx_11_0_arm64.whl
+      - pypi: https://files.pythonhosted.org/packages/ca/23/0b70060007470e1c3c3f74a2e362e11efdaa68d8d657793014e6a860638b/array_api_strict-2.6.1-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/cb/b1/3846dd7f199d53cb17f49cba7e651e9ce294d8497c8c150530ed11865bb8/iniconfig-2.3.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/df/b2/87e62e8c3e2f4b32e5fe99e0b86d576da1312593b39f47d8ceef365e95ed/packaging-26.2-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/e0/b1/0542e0cab6f49f151a2d7a42400f84f706fc0b64e85dc1f56708b2e9fd37/array_api_compat-1.12.0-py3-none-any.whl
-      - pypi: https://files.pythonhosted.org/packages/e1/7b/81bef4348db9705d829c58b9e563c78eddca24438f1ce1108d709e6eed55/array_api_strict-2.4.1-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/ee/67/f403d4ae6e9cd74b546ee88cccdb29b8415a9c1b3d80aebeb20c9ea91d96/pytorch-1.0.2.tar.gz
       - pypi: https://files.pythonhosted.org/packages/f4/7e/a72dd26f3b0f4f2bf1dd8923c85f7ceb43172af56d63c7383eb62b332364/pygments-2.20.0-py3-none-any.whl
       win-64:
@@ -1711,11 +1711,11 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/97/7e/aa70366f8275955cd51fa1ed52a521c7fcebcc0fc279f53c8c1ee6006dfe/coverage-7.10.4-cp313-cp313-win_amd64.whl
       - pypi: https://files.pythonhosted.org/packages/aa/6f/a428fd1cb7ed39b4280d057720fed5121b0d7754fd2a9768640160f5517b/numpy-2.3.2-cp313-cp313-win_amd64.whl
       - pypi: https://files.pythonhosted.org/packages/bc/16/4ea354101abb1287856baa4af2732be351c7bee728065aed451b678153fd/pytest_cov-6.2.1-py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/ca/23/0b70060007470e1c3c3f74a2e362e11efdaa68d8d657793014e6a860638b/array_api_strict-2.6.1-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/cb/b1/3846dd7f199d53cb17f49cba7e651e9ce294d8497c8c150530ed11865bb8/iniconfig-2.3.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/d1/d6/3965ed04c63042e047cb6a3e6ed1a63a35087b6a609aa3a15ed8ac56c221/colorama-0.4.6-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/df/b2/87e62e8c3e2f4b32e5fe99e0b86d576da1312593b39f47d8ceef365e95ed/packaging-26.2-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/e0/b1/0542e0cab6f49f151a2d7a42400f84f706fc0b64e85dc1f56708b2e9fd37/array_api_compat-1.12.0-py3-none-any.whl
-      - pypi: https://files.pythonhosted.org/packages/e1/7b/81bef4348db9705d829c58b9e563c78eddca24438f1ce1108d709e6eed55/array_api_strict-2.4.1-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/ee/67/f403d4ae6e9cd74b546ee88cccdb29b8415a9c1b3d80aebeb20c9ea91d96/pytorch-1.0.2.tar.gz
       - pypi: https://files.pythonhosted.org/packages/f4/7e/a72dd26f3b0f4f2bf1dd8923c85f7ceb43172af56d63c7383eb62b332364/pygments-2.20.0-py3-none-any.whl
 packages:
@@ -1931,7 +1931,7 @@ packages:
   - __glibc >=2.17
   license: MPL-2.0
   purls:
-  - pkg:pypi/hypothesis?source=compressed-mapping
+  - pkg:pypi/hypothesis?source=hash-mapping
   run_exports: {}
   size: 1582523
   timestamp: 1785918196081
@@ -4063,7 +4063,7 @@ packages:
   license: MIT
   license_family: MIT
   purls:
-  - pkg:pypi/pytest?source=compressed-mapping
+  - pkg:pypi/pytest?source=hash-mapping
   run_exports: {}
   size: 306724
   timestamp: 1782127176429
@@ -4880,7 +4880,7 @@ packages:
   - __osx >=11.0
   license: MPL-2.0
   purls:
-  - pkg:pypi/hypothesis?source=compressed-mapping
+  - pkg:pypi/hypothesis?source=hash-mapping
   run_exports: {}
   size: 1279976
   timestamp: 1785918304204
@@ -5804,7 +5804,7 @@ packages:
   - python_abi 3.13.* *_cp313
   license: MPL-2.0
   purls:
-  - pkg:pypi/hypothesis?source=compressed-mapping
+  - pkg:pypi/hypothesis?source=hash-mapping
   run_exports: {}
   size: 1206292
   timestamp: 1785918250834
@@ -6785,13 +6785,6 @@ packages:
   - torch ; extra == 'dev'
   - sparse>=0.15.1 ; extra == 'dev'
   - ndonnx ; extra == 'dev'
-  requires_python: '>=3.10'
-- pypi: https://files.pythonhosted.org/packages/e1/7b/81bef4348db9705d829c58b9e563c78eddca24438f1ce1108d709e6eed55/array_api_strict-2.4.1-py3-none-any.whl
-  name: array-api-strict
-  version: 2.4.1
-  sha256: 22198ceb47cd3d9c0534c50650d265848d0da6ff71707171215e6678ce811ca5
-  requires_dist:
-  - numpy
   requires_python: '>=3.10'
 - pypi: https://files.pythonhosted.org/packages/ee/67/f403d4ae6e9cd74b546ee88cccdb29b8415a9c1b3d80aebeb20c9ea91d96/pytorch-1.0.2.tar.gz
   name: pytorch
