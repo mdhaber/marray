@@ -573,7 +573,9 @@ def masked_namespace(xp):
         setattr(mod, name, get_set_fun(name))
 
     def isin(x1, x2, /, *, invert=False):
-        x1 = asarray(x1)
+        dtype = mod.result_type(x1, x2)
+        x1 = asarray(x1, dtype=dtype)
+        x2 = asarray(x2, dtype=dtype)
         x2 = mod.reshape(x2, (-1,))
         x2 = x2[~_get_mask(x2)]
         data = xp.isin(x1.data, x2.data)
