@@ -112,7 +112,7 @@ def masked_namespace(xp):
             return self._mask
 
         def __array_namespace__(self, api_version=None):
-            if api_version is None or api_version == '2024.12':
+            if api_version is None or api_version == '2025.12':
                 return mod
             else:
                 message = (f"MArray interface for Array API version '{api_version}' "
@@ -491,6 +491,7 @@ def masked_namespace(xp):
         setattr(mod, name, get_manip_fun(name))
     mod.broadcast_arrays = lambda *arrays: get_manip_fun('broadcast_arrays')(arrays)
     mod.meshgrid = lambda *arrays, **kwargs: get_manip_fun('meshgrid')(arrays, **kwargs)
+    mod.broadcast_shapes = xp.broadcast_shapes
 
     ## Searching Functions
     def searchsorted(x1, x2, /, *, side='left', sorter=None):
@@ -503,9 +504,9 @@ def masked_namespace(xp):
         count = xp.zeros(x1_compressed.shape[0]+1, dtype=xp.int64)
         count = _replace_where(count, slice(0, -1), mask_count[~x1.mask], xp=xp)
         count = _replace_where(count, -1, count[-2], xp=xp)
-        i = xp.searchsorted(x1_compressed, x2.data, side=side)
-        j = i + xp.take(count, i)
-        return MArray(j, mask=x2.mask)
+        i = xp.searchsorted(x1_compressed, _get_data(x2), side=side)
+        j = i + count[i]
+        return MArray(j, mask=_get_mask(x2))
 
     def nonzero(x, /):
         x = asarray(x)
@@ -570,6 +571,17 @@ def masked_namespace(xp):
     unique_names = ['unique_values', 'unique_counts', 'unique_inverse', 'unique_all']
     for name in unique_names:
         setattr(mod, name, get_set_fun(name))
+
+    def isin(x1, x2, /, *, invert=False):
+        dtype = mod.result_type(x1, x2)
+        x1 = asarray(x1, dtype=dtype)
+        x2 = asarray(x2, dtype=dtype)
+        x2 = mod.reshape(x2, (-1,))
+        x2 = x2[~_get_mask(x2)]
+        data = xp.isin(x1.data, x2.data)
+        res = MArray(data, x1.mask)
+        return ~res if invert else res
+    mod.isin = isin
 
     ## Sorting Functions ##
     def get_sort_fun(name):

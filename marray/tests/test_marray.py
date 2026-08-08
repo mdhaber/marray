@@ -364,6 +364,7 @@ torch_exceptions = ["\"abs_cpu\" not implemented for 'Bool",
                     "torch.reshape doesn't yet support the copy keyword",
                     "unique_all() not yet implemented for pytorch",
                     "unsqueeze(): argument 'dim' (position 1) must be int, not tuple",
+                    "unsqueeze(): argument 'dim' (position 2) must be int, not tuple",
                     ]
 
 
@@ -1115,7 +1116,7 @@ def test_diff(n, prepend, append, dtype, xp, seed=None):
     ('empty_like', (np.empty((4, 3, 2)),), dict()),
     ('eye', (10, 11), dict(k=2)),
     ('full', ((4, 3, 2), 5), dict()),
-    ('full_like', (np.empty((4, 3, 2)), 5.), dict()),
+    ('full_like', (np.empty((4, 3, 2)),), dict(fill_value=5)),
     ('linspace', (1, 20, 100), dict(endpoint=False)),
     ('ones', ((4, 3, 2),), dict()),
     ('ones_like', (np.empty((4, 3, 2)),), dict()),
@@ -1204,13 +1205,13 @@ def test_meshgrid(indexing, dtype, xp, seed=None):
 @pytest.mark.parametrize("side", ['left', 'right'])
 @pytest.mark.parametrize('dtype', dtypes_integral + dtypes_real)
 @pytest.mark.parametrize('xp', xps)
+@pytest.mark.parametrize('m', [(), 10])
 @pass_exceptions(allowed=torch_exceptions)
-def test_searchsorted(side, dtype, xp, seed=None):
+def test_searchsorted(side, dtype, xp, m, seed=None):
     mxp = marray.masked_namespace(xp)
 
     rng = np.random.default_rng(seed)
     n = 20
-    m = 10
 
     x1 = rng.integers(10, size=n).astype(dtype)
     x1_mask = (rng.random(size=n) > 0.5)
@@ -1234,6 +1235,7 @@ def test_searchsorted(side, dtype, xp, seed=None):
 
     # And the output satisfies the required properties:
     for j in range(res.size):
+        j = () if res.ndim == 0 else j
         i = res[j]
 
         if i.mask:
@@ -1297,9 +1299,10 @@ def test_nonzero(dtype, xp, seed=None):
     ('broadcast_to', 1, (3, 5), tuple(), dict(shape=None)),
     ('concat', 3, (3, 5), tuple(), dict(axis=1)),
     ('expand_dims', 1, (3, 5), tuple(), dict(axis=1)),
+    ('expand_dims', 1, (3, 5), tuple(), dict(axis=(0, 2))),
     ('flip', 1, (3, 5), tuple(), dict(axis=1)),
     ('moveaxis', 1, (3, 5), (1, 2), dict()),
-    ('permute_dims', 1, 3, tuple(), dict(axes=[2, 0, 1])),
+    ('permute_dims', 1, 3, tuple(), dict(axes=[2, 0, -2])),
     ('repeat', 1, (3, 5), (2,), dict(axis=1)),
     ('reshape', 1, (3, 5), tuple(), dict(shape=(-1,), copy=False)),
     ('roll', 1, (3, 5), tuple(), dict(shift=3, axis=1)),
@@ -1339,6 +1342,12 @@ def test_manipulation(f_name, n_arrays, n_dims, args, kwargs, dtype, xp, seed=No
     else:
         ref = as_masked_array(ref_data, mask=ref_mask)
         assert_equal(res, ref, xp=xp, seed=seed)
+
+
+@pytest.mark.parametrize('xp', xps)
+def test_broadcast_shapes(xp):
+    mxp = marray.masked_namespace(xp)
+    assert mxp.broadcast_shapes is xp.broadcast_shapes
 
 
 @pytest.mark.filterwarnings('ignore::numpy.exceptions.ComplexWarning')
@@ -1450,6 +1459,21 @@ def test_set(f_name, dtype, xp, seed=None):
         assert_equal(res.values[res.inverse_indices], x, xp=xp, seed=seed)
 
 
+@pytest.mark.parametrize('invert', [False, True])
+@pytest.mark.parametrize('dtype', dtypes_integral)
+@pytest.mark.parametrize('xp', xps)
+@pass_exceptions(backend_exceptions)
+def test_isin(invert, dtype, xp, seed=None):
+    mxp = marray.masked_namespace(xp)
+    marrays, masked_arrays, seed = get_arrays(2, dtype=dtype, xp=xp, seed=seed)
+    res = mxp.isin(marrays[0], marrays[1])
+    # np.ma.isin is incorrect; see numpy/numpy#19877
+    ref_data = np.isin(masked_arrays[0], masked_arrays[1].compressed(), invert=invert)
+    ref = np.ma.MaskedArray(ref_data, masked_arrays[0].mask)
+    ref = ~ref if invert else ref
+    assert_equal(res, ref, xp=xp, seed=seed)
+
+
 @pytest.mark.parametrize("f_name", ['sort', 'argsort'])
 @pytest.mark.parametrize("descending", [False, True])
 @pytest.mark.parametrize("stable", [False, True])
@@ -1511,7 +1535,7 @@ def test_array_namespace(xp):
     mxp = marray.masked_namespace(xp)
     x = mxp.asarray([1, 2, 3])
     assert x.__array_namespace__() is mxp
-    assert x.__array_namespace__("2024.12") is mxp
+    assert x.__array_namespace__("2025.12") is mxp
     message = "MArray interface for Array API version 'shrubbery'..."
     with pytest.raises(NotImplementedError, match=message):
         x.__array_namespace__("shrubbery")
